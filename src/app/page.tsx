@@ -1,42 +1,34 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
-import { Proof18Shell } from "@/components/shared/proof18-shell";
-import { ScreenRouter } from "@/screens/proof18-screens";
-import { useProof18Store } from "@/state/proof18-store";
-import { Actor, Screen } from "@/types/proof18";
-
-const defaultScreenByActor: Record<Actor, Screen> = {
-  teen: "home",
-  parent: "family-setup",
-};
+import Link from "next/link";
 
 export default function Page() {
-  const [actor, setActor] = useState<Actor>("teen");
-  const [screen, setScreen] = useState<Screen>("home");
-  const { treasuryFunded, familyCreated } = useProof18Store();
-
-  useEffect(() => {
-    if (actor === "teen" && !treasuryFunded) {
-      setScreen("home");
-    }
-    if (actor === "parent" && !familyCreated) {
-      setScreen("family-setup");
-    }
-  }, [actor, treasuryFunded, familyCreated]);
-
   return (
-    <Proof18Shell
-      actor={actor}
-      screen={screen}
-      setActor={(nextActor) => {
-        setActor(nextActor);
-        setScreen(defaultScreenByActor[nextActor]);
-      }}
-      setScreen={setScreen}
-    >
-      <ScreenRouter screen={screen} />
-    </Proof18Shell>
+    <main className="mx-auto max-w-3xl p-6">
+      <h1 className="text-3xl font-bold">Proof18</h1>
+      <p className="mt-2 text-gray-600">
+        Teen-first mini-bank with AI guidance (Flow + Lit + Zama + Storacha).
+      </p>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/teen"
+          className="rounded-xl border p-5 hover:bg-gray-50"
+        >
+          <div className="text-lg font-semibold">Teen</div>
+          <div className="mt-1 text-sm text-gray-600">
+            Save, subscribe, chat with Clawrence, and track your Passport.
+          </div>
+        </Link>
+
+        <Link
+          href="/guardian"
+          className="rounded-xl border p-5 hover:bg-gray-50"
+        >
+          <div className="text-lg font-semibold">Guardian</div>
+          <div className="mt-1 text-sm text-gray-600">
+            Set encrypted policy, approve requests, and audit receipts.
+          </div>
+        </Link>
+      </div>
+    </main>
   );
 }

@@ -1,0 +1,56 @@
+import "server-only";
+
+import { SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { getLitClient } from "@/lib/lit/client";
+import type { ActionType, PolicyDecision } from "@/lib/types";
+
+export interface ExecutorParams {
+  action: ActionType;
+  policyDecision: PolicyDecision;
+  guardianApproved: boolean;
+  amount: string;
+  familyId: string;
+  txData: Uint8Array;
+  clawrencePublicKey: string;
+  sessionSigs: any;
+}
+
+export interface ExecutorResult {
+  signed: boolean;
+  reason?: string;
+  requiresApproval?: boolean;
+  response: any;
+  signatures?: any;
+}
+
+export async function executeSafeSigning(
+  params: ExecutorParams,
+): Promise<ExecutorResult> {
+  const client = await getLitClient();
+
+  const result: any = await (client as any).executeJs({
+    ipfsId: SAFE_EXECUTOR_CID,
+    sessionSigs: params.sessionSigs,
+    jsParams: {
+      action: params.action,
+      policyDecision: params.policyDecision,
+      guardianApproved: params.guardianApproved,
+      amount: params.amount,
+      familyId: params.familyId,
+      txData: params.txData,
+      publicKey: params.clawrencePublicKey,
+      sigName: "proof18Sig",
+    },
+  });
+
+  const response = JSON.parse(result.response as string);
+
+  return {
+    signed: response.signed,
+    reason: response.reason,
+    requiresApproval: response.requiresApproval,
+    response,
+    signatures: result.signatures,
+  };
+}
+

@@ -16,7 +16,17 @@
 # misc
 .DS_Store
 *.pem
-*.md
+
+# scratch / prompt docs to keep out of git
+/codesnippet.md
+/FUlldev.md
+/fullproject.md
+/flow_lit_zama_filecoin_deep_research_2026-03-25.md
+/implementation_plan.md
+/research.md
+/proof18_four_track_winning_blueprint_2026-03-25.md
+/proof18_pl_genesis_track_strategy_2026-03-25.md
+/PROOF18_COMPLETE_PROJECT_LOGIC_DOCUMENT.md
 
 # generated / IDE / local files
 .idea/

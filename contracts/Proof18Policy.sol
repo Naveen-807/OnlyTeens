@@ -81,47 +81,62 @@ contract Proof18Policy is ZamaEthereumConfig {
             "Not authorized"
         );
 
-        euint64 encAmount = FHE.asEuint64(amount);
-        euint8 encPassport = FHE.asEuint8(currentPassportLevel);
+        // Keep the confidential policy evaluation in-scope only for the encrypted output.
+        // This avoids "stack too deep" while still producing a publicly-decryptable encrypted decision.
+        {
+            require(amount <= type(uint64).max, "Amount too large");
 
-        ebool withinSingleCap = FHE.le(encAmount, p.singleActionCap);
-        ebool meetsPassport = FHE.ge(encPassport, p.trustUnlockThreshold);
-        ebool withinRecurring = FHE.le(encAmount, p.recurringMonthlyCap);
-        ebool hasRiskFlags = FHE.ne(p.riskFlags, FHE.asEuint8(0));
+            euint64 encAmount = FHE.asEuint64(uint64(amount));
+            euint8 encPassport = FHE.asEuint8(currentPassportLevel);
 
-        euint8 greenCheck = FHE.select(
-            FHE.and(FHE.and(withinSingleCap, meetsPassport), FHE.not(hasRiskFlags)),
-            FHE.asEuint8(0),
-            FHE.asEuint8(1)
-        );
+            ebool hasRiskFlags = FHE.ne(p.riskFlags, FHE.asEuint8(uint8(0)));
+            ebool withinSingleCap = FHE.le(encAmount, p.singleActionCap);
+            ebool withinRecurringCap = FHE.le(encAmount, p.recurringMonthlyCap);
+            ebool meetsPassport = FHE.ge(encPassport, p.trustUnlockThreshold);
 
-        euint8 yellowCheck = FHE.select(
-            FHE.and(FHE.and(withinSingleCap, FHE.not(meetsPassport)), FHE.not(hasRiskFlags)),
-            FHE.asEuint8(1),
-            FHE.asEuint8(2)
-        );
+            ebool useRecurringCap = FHE.asEbool(isRecurring);
+            ebool withinCap = FHE.select(useRecurringCap, withinRecurringCap, withinSingleCap);
 
-        euint8 finalDecision = FHE.select(
-            hasRiskFlags,
-            FHE.asEuint8(3),
-            FHE.select(FHE.eq(greenCheck, FHE.asEuint8(0)), FHE.asEuint8(0), yellowCheck)
-        );
+            // decisionEnc:
+            // - BLOCKED if risk flags are set
+            // - GREEN if within cap + meets passport threshold
+            // - YELLOW if within cap but doesn't meet passport threshold
+            // - RED if over cap
+            euint8 decisionEnc = FHE.select(
+                hasRiskFlags,
+                FHE.asEuint8(uint8(Decision.BLOCKED)),
+                FHE.select(
+                    withinCap,
+                    FHE.select(
+                        meetsPassport,
+                        FHE.asEuint8(uint8(Decision.GREEN)),
+                        FHE.asEuint8(uint8(Decision.YELLOW))
+                    ),
+                    FHE.asEuint8(uint8(Decision.RED))
+                )
+            );
 
-        FHE.allowThis(finalDecision);
-        FHE.makePubliclyDecryptable(FHE.toBytes32(finalDecision));
+            FHE.allowThis(decisionEnc);
+            FHE.makePubliclyDecryptable(decisionEnc);
+        }
 
         Decision decision;
         if (amount == 0) {
             decision = Decision.BLOCKED;
         } else if (isRecurring) {
-            decision = withinRecurring ? Decision.YELLOW : Decision.RED;
+            // MVP: recurring actions always require guardian review (YELLOW/RED is decided offchain).
+            // The confidential cap checks above are still computed and made decryptable.
+            decision = Decision.RED;
         } else if (currentPassportLevel >= 2 && amount <= 15) {
             decision = Decision.GREEN;
         } else {
             decision = Decision.YELLOW;
         }
 
-        emit PolicyEvaluated(familyId, access.teens(familyId), isRecurring ? "subscription" : "savings", amount, decision, block.timestamp);
+        address teen = access.teens(familyId);
+        string memory actionType = isRecurring ? "subscription" : "savings";
+
+        emit PolicyEvaluated(familyId, teen, actionType, amount, decision, block.timestamp);
         return decision;
     }
 

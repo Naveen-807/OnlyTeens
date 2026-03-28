@@ -1,0 +1,52 @@
+{
+  "name": "lockin-stablecoin-escrow",
+  "version": "0.1.0",
+  "description": "Production-grade plugin for planning and scaffolding a real stablecoin escrow and retainer dApp on Base.",
+  "author": {
+    "name": "[TODO: Author Name]",
+    "email": "[TODO: author@example.com]",
+    "url": "[TODO: https://github.com/author]"
+  },
+  "homepage": "[TODO: Publish docs URL]",
+  "repository": "[TODO: Publish repo URL]",
+  "license": "MIT",
+  "keywords": [
+    "blockchain",
+    "base",
+    "usdc",
+    "escrow",
+    "payments"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks.json",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "LockIn Stablecoin Escrow",
+    "shortDescription": "Investor-ready dApp architecture for USDC escrow, retainers, and onchain reputation.",
+    "longDescription": "Production-oriented plugin for a real-world stablecoin escrow product on Base, including product framing, chain research, contract design, backend modules, APIs, security, and delivery roadmap.",
+    "developerName": "[TODO: Developer Name]",
+    "category": "Blockchain",
+    "capabilities": [
+      "Research",
+      "Architecture",
+      "Write"
+    ],
+    "websiteURL": "[TODO: Public website URL]",
+    "privacyPolicyURL": "[TODO: Privacy policy URL]",
+    "termsOfServiceURL": "[TODO: Terms URL]",
+    "defaultPrompt": [
+      "Plan a Base-first escrow dApp MVP.",
+      "Generate the monorepo structure for LockIn.",
+      "Write contract and API specs for milestones."
+    ],
+    "brandColor": "#0A7CFF",
+    "composerIcon": "[TODO: ./assets/icon.png]",
+    "logo": "[TODO: ./assets/logo.png]",
+    "screenshots": [
+      "[TODO: ./assets/screenshot1.png]",
+      "[TODO: ./assets/screenshot2.png]",
+      "[TODO: ./assets/screenshot3.png]"
+    ]
+  }
+}

@@ -1,15 +1,15 @@
 import "server-only";
 
-import { CONTRACTS, PASSPORT_ABI } from "@/lib/constants";
+import { CONTRACTS, PASSPORT_ABI, PASSPORT_LEVELS } from "@/lib/constants.server";
 import { flowPublicClient, flowWalletClient } from "@/lib/flow/clients";
-import { PASSPORT_LEVELS, type PassportState } from "@/lib/types";
+import type { PassportState } from "@/lib/types";
 
 export async function createPassport(
   account: any,
   familyId: `0x${string}`,
   teenAddress: `0x${string}`,
 ): Promise<string> {
-  return await flowWalletClient.writeContract({
+  return flowWalletClient.writeContract({
     account,
     address: CONTRACTS.passport,
     abi: PASSPORT_ABI,
@@ -80,4 +80,3 @@ export async function getPassport(
     },
   };
 }
-

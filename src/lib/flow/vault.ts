@@ -2,7 +2,7 @@ import "server-only";
 
 import { formatEther, parseEther } from "viem";
 
-import { CONTRACTS, VAULT_ABI } from "@/lib/constants";
+import { CONTRACTS, VAULT_ABI } from "@/lib/constants.server";
 import { flowPublicClient, flowWalletClient } from "@/lib/flow/clients";
 import type { TeenBalances } from "@/lib/types";
 
@@ -66,4 +66,3 @@ export async function getBalances(
     spendable: formatEther(savings + reserve),
   };
 }
-

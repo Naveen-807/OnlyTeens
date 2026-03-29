@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CONTRACTS, SCHEDULER_ABI } from "@/lib/constants";
+import { CONTRACTS, SCHEDULER_ABI } from "@/lib/constants.server";
 import { flowPublicClient, flowWalletClient } from "@/lib/flow/clients";
 
 const ONE_WEEK = 604800n;
@@ -78,7 +78,7 @@ export async function pauseSchedule(
   guardianAccount: any,
   scheduleId: number,
 ): Promise<string> {
-  return await flowWalletClient.writeContract({
+  return flowWalletClient.writeContract({
     account: guardianAccount,
     address: CONTRACTS.scheduler,
     abi: SCHEDULER_ABI,
@@ -86,4 +86,3 @@ export async function pauseSchedule(
     args: [BigInt(scheduleId)],
   });
 }
-

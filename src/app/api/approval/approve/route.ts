@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     // Step 3: Mark executed in durable store
     if (result.success && result.flow) {
-      markExecuted(
+      await markExecuted(
         requestId,
         result.flow.txHash,
         result.storacha?.receiptCid || ""
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       approval: { cid: approval.approvalCid, url: approval.approvalUrl },
       execution: result,
     };
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, response);
+    if (idempotencyKey) await setCachedIdempotentResult(idempotencyKey, response);
     return ok(response);
   } catch (error: any) {
     return fail(mapErrorToCode(error), error.message, 500);

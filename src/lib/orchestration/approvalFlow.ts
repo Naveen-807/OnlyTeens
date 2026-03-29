@@ -34,19 +34,22 @@ export async function approveRequest(
   request.status = "approved";
   request.guardianNote = guardianNote || "Approved";
 
-  const approvalRecord = await uploadJSON({
-    type: "guardian_approval",
-    requestId,
-    familyId: request.familyId,
-    teen: request.teenAddress,
-    actionType: request.actionType,
-    description: request.description,
-    amount: request.amount,
-    approved: true,
-    guardianNote: request.guardianNote,
-    originalPolicyDecision: request.policyDecision,
-    timestamp: new Date().toISOString(),
-  });
+  const approvalRecord = await uploadJSON(
+    {
+      type: "guardian_approval",
+      requestId,
+      familyId: request.familyId,
+      teen: request.teenAddress,
+      actionType: request.actionType,
+      description: request.description,
+      amount: request.amount,
+      approved: true,
+      guardianNote: request.guardianNote,
+      originalPolicyDecision: request.policyDecision,
+      timestamp: new Date().toISOString(),
+    },
+    { familyId: request.familyId, role: "guardian" },
+  );
 
   return {
     request,
@@ -66,17 +69,20 @@ export async function rejectRequest(
   request.status = "rejected";
   request.guardianNote = guardianNote;
 
-  const rejectionRecord = await uploadJSON({
-    type: "guardian_rejection",
-    requestId,
-    familyId: request.familyId,
-    teen: request.teenAddress,
-    description: request.description,
-    amount: request.amount,
-    approved: false,
-    guardianNote,
-    timestamp: new Date().toISOString(),
-  });
+  const rejectionRecord = await uploadJSON(
+    {
+      type: "guardian_rejection",
+      requestId,
+      familyId: request.familyId,
+      teen: request.teenAddress,
+      description: request.description,
+      amount: request.amount,
+      approved: false,
+      guardianNote,
+      timestamp: new Date().toISOString(),
+    },
+    { familyId: request.familyId, role: "guardian" },
+  );
 
   return {
     request,
@@ -97,4 +103,3 @@ export async function getGuardianDecryptedContext(params: {
     guardianSigner: params.guardianSigner,
   });
 }
-

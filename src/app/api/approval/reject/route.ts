@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       rejectionCid: result.rejectionCid,
     };
 
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, response);
+    if (idempotencyKey) await setCachedIdempotentResult(idempotencyKey, response);
     return ok(response);
   } catch (error: any) {
     return fail(mapErrorToCode(error), error.message, 500);

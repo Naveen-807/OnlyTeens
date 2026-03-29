@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import type { ClawrenceIntent, UserSession } from "@/lib/types";
+import type { ClawrenceIntent, FlowResult, UserSession } from "@/lib/types";
+
+type EvidenceLink = {
+  label: string;
+  url?: string;
+  value: string;
+};
 
 interface Message {
   id: string;
@@ -11,6 +17,34 @@ interface Message {
   timestamp: string;
   intent?: ClawrenceIntent;
   actionPreview?: boolean;
+  evidence?: EvidenceLink[];
+}
+
+function buildEvidence(result: FlowResult): EvidenceLink[] {
+  return [
+    result.flow?.explorerUrl
+      ? { label: "Flow", url: result.flow.explorerUrl, value: result.flow.txHash }
+      : null,
+    result.storacha?.receiptUrl
+      ? { label: "Storacha", url: result.storacha.receiptUrl, value: result.storacha.receiptCid }
+      : null,
+    result.lit?.actionCid
+      ? {
+          label: "Lit Action",
+          url: `https://ipfs.io/ipfs/${result.lit.actionCid}`,
+          value: result.lit.actionCid,
+        }
+      : null,
+    result.zama?.decision
+      ? { label: "Policy Decision", value: result.zama.decision }
+      : null,
+    result.passport
+      ? {
+          label: "Passport",
+          value: `Lv.${result.passport.oldLevel} → Lv.${result.passport.newLevel}`,
+        }
+      : null,
+  ].filter(Boolean) as EvidenceLink[];
 }
 
 export function ClawrenceChat({
@@ -86,7 +120,7 @@ export function ClawrenceChat({
         intent: data.intent,
         actionPreview: data.type === "action_preview",
       });
-    } catch (err) {
+    } catch {
       push({
         id: `err_${Date.now()}`,
         role: "system",
@@ -122,12 +156,13 @@ export function ClawrenceChat({
             clawrencePkpTokenId,
           }),
         });
-        const data = await res.json();
+        const data = (await res.json()) as FlowResult;
         push({
           id: `result_${Date.now()}`,
           role: "clawrence",
           content: data?.clawrence?.celebration || data?.clawrence?.postExplanation || "Done.",
           timestamp: new Date().toISOString(),
+          evidence: buildEvidence(data),
         });
       } else {
         const res = await fetch("/api/subscription/request", {
@@ -144,15 +179,15 @@ export function ClawrenceChat({
             clawrencePublicKey,
           }),
         });
-        const data = await res.json();
+        const data = (await res.json()) as FlowResult;
         push({
           id: `result_${Date.now()}`,
           role: "clawrence",
-          content:
-            data?.requiresApproval
-              ? "Sent to your guardian for approval."
-              : data?.clawrence?.celebration || "Submitted.",
+          content: data?.requiresApproval
+            ? "Sent to your guardian for approval."
+            : data?.clawrence?.celebration || "Submitted.",
           timestamp: new Date().toISOString(),
+          evidence: buildEvidence(data),
         });
       }
     } finally {
@@ -172,10 +207,7 @@ export function ClawrenceChat({
 
       <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4">
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === "teen" ? "justify-end" : "justify-start"}`}
-          >
+          <div key={msg.id} className={`flex ${msg.role === "teen" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[80%] whitespace-pre-wrap rounded-lg p-3 text-sm ${
                 msg.role === "teen"
@@ -189,9 +221,7 @@ export function ClawrenceChat({
               {msg.actionPreview ? (
                 <div className="mt-3 rounded bg-indigo-50 p-2 text-xs text-indigo-900">
                   <div className="font-semibold">Preview ready</div>
-                  <div className="mt-1">
-                    Confirm to run: <code>{msg.intent?.description}</code>
-                  </div>
+                  <div className="mt-1">Confirm to run: <code>{msg.intent?.description}</code></div>
                   <button
                     onClick={confirmPreview}
                     disabled={loading}
@@ -199,6 +229,27 @@ export function ClawrenceChat({
                   >
                     Confirm
                   </button>
+                </div>
+              ) : null}
+              {msg.evidence?.length ? (
+                <div className="mt-3 space-y-2 rounded bg-slate-50 p-2 text-xs text-slate-700">
+                  {msg.evidence.map((item) =>
+                    item.url ? (
+                      <a
+                        key={`${msg.id}-${item.label}`}
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block underline"
+                      >
+                        {item.label}: {item.value}
+                      </a>
+                    ) : (
+                      <div key={`${msg.id}-${item.label}`}>
+                        {item.label}: {item.value}
+                      </div>
+                    ),
+                  )}
                 </div>
               ) : null}
             </div>
@@ -232,4 +283,3 @@ export function ClawrenceChat({
     </div>
   );
 }
-

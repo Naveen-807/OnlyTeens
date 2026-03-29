@@ -8,10 +8,10 @@ export default function TeenSubscribePage() {
   const familyId = family?.familyId;
   const guardianAddress = family?.guardianAddress || "";
 
-  if (!session || !familyId) {
+  if (!session || !familyId || !family?.clawrencePkpPublicKey) {
     return (
       <div className="text-sm text-gray-600">
-        Missing session or family. Complete onboarding first.
+        Missing session, family, or Clawrence executor context. Complete onboarding first.
       </div>
     );
   }
@@ -23,7 +23,7 @@ export default function TeenSubscribePage() {
       teenAddress={session.address as `0x${string}`}
       guardianAddress={guardianAddress}
       teenName="Teen"
-      clawrencePublicKey={session.pkpPublicKey}
+      clawrencePublicKey={family.clawrencePkpPublicKey}
     />
   );
 }

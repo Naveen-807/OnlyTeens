@@ -17,7 +17,7 @@ import { addReceipt, receiptFromFlowResult } from "@/lib/receipts/receiptStore";
 import { flowToWei, inrToPaise } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import type { FlowResult, UserSession } from "@/lib/types";
-import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants.server";
 
 export async function executeSavingsFlow(params: {
   session: UserSession;
@@ -147,7 +147,10 @@ export async function executeSavingsFlow(params: {
         decision,
         flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
         lit: { actionCid: SAFE_EXECUTOR_CID },
-        zama: { contractAddress: CONTRACTS.policy },
+        zama: {
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: policyResult.txHash || "",
+        },
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
         passport: { newLevel: passportAfter.level, leveledUp },
         clawrence: { preExplanation },
@@ -160,7 +163,7 @@ export async function executeSavingsFlow(params: {
         amount: params.amount,
       }
     );
-    addReceipt(localReceipt);
+    await addReceipt(localReceipt);
 
     let passportCid: { cid: string; url: string } | null = null;
     if (leveledUp) {

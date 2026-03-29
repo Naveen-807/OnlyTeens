@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       clawrencePkpTokenId: body.clawrencePkpTokenId,
     });
 
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, result);
+    if (idempotencyKey) await setCachedIdempotentResult(idempotencyKey, result);
     return ok(result);
   } catch (error: any) {
     return fail(mapErrorToCode(error), error?.message || "Savings execution failed", 500);

@@ -1,12 +1,17 @@
 import "server-only";
 
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { uploadJSON } from "@/lib/storacha/client";
 import type { PolicyDecision, Proof18Receipt } from "@/lib/types";
 
 export async function storeReceipt(
   receipt: Proof18Receipt,
 ): Promise<{ cid: string; url: string }> {
+  assertContractConfigForDemo();
+  if (receipt.version !== "v1") {
+    throw new Error("EVIDENCE_WRITE_FAILED:Unsupported receipt schema version");
+  }
   const result = await uploadJSON(receipt);
   receipt.storachaCid = result.cid;
   return result;
@@ -28,7 +33,7 @@ export function buildSavingsReceipt(params: {
   zamaTxHash?: string;
 }): Proof18Receipt {
   return {
-    version: "1.0",
+    version: "v1",
     type: "savings",
     familyId: params.familyId,
     teen: params.teen,
@@ -85,7 +90,7 @@ export function buildSubscriptionReceipt(params: {
   zamaTxHash?: string;
 }): Proof18Receipt {
   return {
-    version: "1.0",
+    version: "v1",
     type: "subscription",
     familyId: params.familyId,
     teen: params.teen,
@@ -158,4 +163,3 @@ export async function storeConversationLog(params: {
     timestamp: new Date().toISOString(),
   });
 }
-

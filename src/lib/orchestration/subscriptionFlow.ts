@@ -14,6 +14,11 @@ import {
   storePassportSnapshot,
   storeReceipt,
 } from "@/lib/storacha/receipts";
+import { addReceipt, receiptFromFlowResult } from "@/lib/receipts/receiptStore";
+import { createApprovalRequest } from "@/lib/approvals/durableApprovals";
+import { flowToWei, inrToPaise } from "@/lib/money";
+import { assertContractConfigForDemo } from "@/lib/runtime/config";
+import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import type { ApprovalRequest, FlowResult, UserSession } from "@/lib/types";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 
@@ -28,6 +33,7 @@ export async function requestSubscription(params: {
   clawrencePublicKey: string;
 }): Promise<FlowResult & { approvalRequest?: ApprovalRequest }> {
   try {
+    assertContractConfigForDemo();
     const passportState = await getPassport(params.familyId, params.teenAddress);
 
     const preExplanation = await preActionExplanation({
@@ -43,7 +49,7 @@ export async function requestSubscription(params: {
 
     const policyResult = await evaluateAction({
       familyId: params.familyId,
-      amount: Math.round(Number(params.monthlyAmount) * 100),
+      amount: inrToPaise(params.monthlyAmount),
       passportLevel: passportState.level,
       isRecurring: true,
     });
@@ -113,8 +119,7 @@ export async function requestSubscription(params: {
       timestamp: new Date().toISOString(),
     });
 
-    const approvalRequest: ApprovalRequest = {
-      id: `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    const approvalRequest: ApprovalRequest = createApprovalRequest({
       familyId: params.familyId,
       teenAddress: params.teenAddress,
       teenName: params.teenName,
@@ -128,10 +133,7 @@ export async function requestSubscription(params: {
       clawrenceGuardianExplanation: guardianExpl,
       teenPassportLevel: passportState.level,
       teenStreak: passportState.weeklyStreak,
-      requestedAt: new Date().toISOString(),
-      status: "pending",
-      storachaCid: pendingReceipt.cid,
-    };
+    });
 
     return {
       success: false,
@@ -174,6 +176,7 @@ export async function executeApprovedSubscription(params: {
   zamaTxHash?: string;
 }): Promise<FlowResult> {
   try {
+    assertContractConfigForDemo();
     const litResult = await executeSafeSigning({
       action: "subscription",
       policyDecision: params.decision as any,
@@ -207,14 +210,25 @@ export async function executeApprovedSubscription(params: {
       params.monthlyAmount,
     );
 
-    const amountWei = BigInt(Math.round(Number(params.monthlyAmount) * 1e18));
+    const amountWei = flowToWei(params.monthlyAmount);
+    const subscriptionRecipient =
+      (process.env.SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}` | undefined) ||
+      ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+    if (
+      isDemoStrictMode() &&
+      subscriptionRecipient === "0x0000000000000000000000000000000000000000"
+    ) {
+      throw new Error(
+        "MISSING_CONFIG:SUBSCRIPTION_RECIPIENT_ADDRESS is required in strict demo mode",
+      );
+    }
     await createSubscriptionSchedule(
       pkpAccount,
       params.familyId,
       params.teenAddress,
       amountWei,
       params.serviceName,
-      "0x0000000000000000000000000000000000000000" as `0x${string}`,
+      subscriptionRecipient,
     );
 
     const parsedEvents = await parseTransactionEvents(flowTx.txHash as `0x${string}`);
@@ -249,6 +263,27 @@ export async function executeApprovedSubscription(params: {
     });
 
     const storachaReceipt = await storeReceipt(receipt);
+
+    // ── Store receipt locally for dashboard UI ──
+    const localReceipt = receiptFromFlowResult(
+      {
+        decision: params.decision,
+        flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
+        lit: { actionCid: SAFE_EXECUTOR_CID },
+        zama: { contractAddress: CONTRACTS.policy },
+        storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
+        passport: { newLevel: passportAfter.level, leveledUp },
+        clawrence: { preExplanation: params.preExplanation },
+      },
+      {
+        familyId: params.familyId,
+        teenAddress: params.teenAddress,
+        type: "subscription",
+        description: `${params.serviceName} subscription`,
+        amount: params.monthlyAmount,
+      }
+    );
+    addReceipt(localReceipt);
 
     let passportCid: { cid: string; url: string } | null = null;
     if (leveledUp) {
@@ -316,4 +351,3 @@ export async function executeApprovedSubscription(params: {
     };
   }
 }
-

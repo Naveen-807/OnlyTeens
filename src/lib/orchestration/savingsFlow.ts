@@ -13,6 +13,9 @@ import {
   storePassportSnapshot,
   storeReceipt,
 } from "@/lib/storacha/receipts";
+import { addReceipt, receiptFromFlowResult } from "@/lib/receipts/receiptStore";
+import { flowToWei, inrToPaise } from "@/lib/money";
+import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 
@@ -29,6 +32,7 @@ export async function executeSavingsFlow(params: {
   clawrencePkpTokenId: string;
 }): Promise<FlowResult> {
   try {
+    assertContractConfigForDemo();
     const passportBefore = await getPassport(params.familyId, params.teenAddress);
 
     const preExplanation = await preActionExplanation({
@@ -44,7 +48,7 @@ export async function executeSavingsFlow(params: {
 
     const policyResult = await evaluateAction({
       familyId: params.familyId,
-      amount: Math.round(Number(params.amount) * 100),
+      amount: inrToPaise(params.amount),
       passportLevel: passportBefore.level,
       isRecurring: false,
     });
@@ -96,7 +100,7 @@ export async function executeSavingsFlow(params: {
     );
 
     if (params.isRecurring) {
-      const amountWei = BigInt(Math.round(Number(params.amount) * 1e18));
+      const amountWei = flowToWei(params.amount);
       await createSavingsSchedule(
         pkpAccount,
         params.familyId,
@@ -136,6 +140,27 @@ export async function executeSavingsFlow(params: {
     });
 
     const storachaReceipt = await storeReceipt(receipt);
+
+    // ── Store receipt locally for dashboard UI ──
+    const localReceipt = receiptFromFlowResult(
+      {
+        decision,
+        flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
+        lit: { actionCid: SAFE_EXECUTOR_CID },
+        zama: { contractAddress: CONTRACTS.policy },
+        storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
+        passport: { newLevel: passportAfter.level, leveledUp },
+        clawrence: { preExplanation },
+      },
+      {
+        familyId: params.familyId,
+        teenAddress: params.teenAddress,
+        type: "savings",
+        description: `Save ${params.amount} FLOW ${params.isRecurring ? params.interval : "once"}`,
+        amount: params.amount,
+      }
+    );
+    addReceipt(localReceipt);
 
     let passportCid: { cid: string; url: string } | null = null;
     if (leveledUp) {
@@ -207,4 +232,3 @@ export async function executeSavingsFlow(params: {
     };
   }
 }
-

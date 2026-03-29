@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { approveRequest } from "@/lib/orchestration/approvalFlow";
+import { fail, mapErrorToCode, ok } from "@/lib/api/response";
+import {
+  getCachedIdempotentResult,
+  setCachedIdempotentResult,
+} from "@/lib/api/idempotency";
+import {
+  approveRequestDurable,
+  markExecuted,
+} from "@/lib/approvals/durableApprovals";
 import { executeApprovedSubscription } from "@/lib/orchestration/subscriptionFlow";
 import { getPassport } from "@/lib/flow/passport";
 
@@ -8,13 +15,23 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { requestId, guardianNote, session } = body;
+    const idempotencyKey = (body.idempotencyKey || req.headers.get("idempotency-key")) as string | null;
 
-    const approval = await approveRequest(requestId, guardianNote);
+    if (!requestId || !session) {
+      return fail("BAD_REQUEST", "requestId and session are required", 400);
+    }
+
+    const cached = getCachedIdempotentResult(idempotencyKey);
+    if (cached) return ok(cached as Record<string, unknown>);
+
+    // Step 1: Approve and store on Storacha
+    const approval = await approveRequestDurable(requestId, guardianNote);
     const request = approval.request;
 
+    // Step 2: Execute the approved action
     const passportBefore = await getPassport(
       request.familyId as `0x${string}`,
-      request.teenAddress as `0x${string}`,
+      request.teenAddress as `0x${string}`
     );
 
     const serviceName =
@@ -38,18 +55,22 @@ export async function POST(req: NextRequest) {
       approvalCid: approval.approvalCid,
     });
 
-    return NextResponse.json({
-      ...result,
-      approval: {
-        cid: approval.approvalCid,
-        url: approval.approvalUrl,
-      },
-    });
+    // Step 3: Mark executed in durable store
+    if (result.success && result.flow) {
+      markExecuted(
+        requestId,
+        result.flow.txHash,
+        result.storacha?.receiptCid || ""
+      );
+    }
+
+    const response = {
+      approval: { cid: approval.approvalCid, url: approval.approvalUrl },
+      execution: result,
+    };
+    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, response);
+    return ok(response);
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error?.message },
-      { status: 500 },
-    );
+    return fail(mapErrorToCode(error), error.message, 500);
   }
 }
-

@@ -26,6 +26,7 @@
     "litActions",
     "lib",
     "components",
-    "scripts"
+    "scripts",
+    "test"
   ]
 }

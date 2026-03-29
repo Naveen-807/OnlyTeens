@@ -91,7 +91,7 @@ export interface ApprovalRequest {
 
 // ═══ Receipt (stored on Storacha) ═══
 export interface Proof18Receipt {
-  version: "1.0";
+  version: "v1";
   type: ActionType | "approval" | "passport_update";
   familyId: string;
   teen: string;
@@ -212,4 +212,3 @@ export interface ScheduleInfo {
   scheduleType: ScheduleType;
   active: boolean;
 }
-

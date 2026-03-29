@@ -6,9 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "preflight": "tsx scripts/preflight.ts",
+    "bootstrap": "npm ci && npm run preflight",
     "hardhat:compile": "hardhat compile",
     "hardhat:test": "hardhat test",
-    "hardhat:deploy:flow": "hardhat run scripts/deploy.ts --network flowTestnet"
+    "hardhat:deploy:flow": "hardhat run scripts/deploy.cjs --network flowTestnet",
+    "hardhat:deploy:policy": "hardhat run scripts/deployPolicy.cjs --network sepolia"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -39,6 +43,7 @@
     "dotenv": "^16.4.5",
     "hardhat": "^2.22.10",
     "tailwindcss": "^4.1.13",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2"
   }
 }

@@ -1,21 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { getPendingRequests } from "@/lib/orchestration/approvalFlow";
+import {
+  getPendingRequestsByFamily,
+  getAllRequestsByFamily,
+} from "@/lib/approvals/durableApprovals";
+import { fail, mapErrorToCode, ok } from "@/lib/api/response";
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const familyId = searchParams.get("familyId");
+    const familyId = req.nextUrl.searchParams.get("familyId");
+    const includeAll = req.nextUrl.searchParams.get("all") === "true";
+
     if (!familyId) {
-      return NextResponse.json({ approvals: [] });
+      return fail("BAD_REQUEST", "familyId required", 400);
     }
 
-    return NextResponse.json({ approvals: getPendingRequests(familyId) });
+    const requests = includeAll
+      ? getAllRequestsByFamily(familyId)
+      : getPendingRequestsByFamily(familyId);
+
+    return ok({
+      items: requests,
+      requests,
+      approvals: requests,
+      count: requests.length,
+    });
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error?.message },
-      { status: 500 },
-    );
+    return fail(mapErrorToCode(error), error.message, 500);
   }
 }
-

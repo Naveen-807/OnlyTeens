@@ -1,6 +1,7 @@
 import "server-only";
 
 import { SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { getLitClient } from "@/lib/lit/client";
 import type { ActionType, PolicyDecision } from "@/lib/types";
 
@@ -26,6 +27,10 @@ export interface ExecutorResult {
 export async function executeSafeSigning(
   params: ExecutorParams,
 ): Promise<ExecutorResult> {
+  assertContractConfigForDemo();
+  if (!SAFE_EXECUTOR_CID) {
+    throw new Error("MISSING_CONFIG:SAFE_EXECUTOR_CID is required for execution");
+  }
   const client = await getLitClient();
 
   const result: any = await (client as any).executeJs({
@@ -53,4 +58,3 @@ export async function executeSafeSigning(
     signatures: result.signatures,
   };
 }
-

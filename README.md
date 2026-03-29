@@ -14,3 +14,33 @@ too locked (no teen autonomy). Proof18 bridges this gap with
 ## 🏗 Architecture
 
 - Full spec: `PROOF18_COMPLETE_PROJECT_LOGIC_DOCUMENT.md`
+
+## ⚙️ Setup (Strict Demo Mode)
+
+1. Copy `.env.example` to `.env.local` and fill all non-placeholder values.
+2. Set `DEMO_STRICT_MODE=true`.
+3. Ensure all contract addresses are non-zero in `deployments.json` and/or env vars.
+4. Run:
+
+```bash
+npm run bootstrap
+```
+
+This runs `npm ci` + strict preflight checks (RPC reachability, non-zero contracts, Lit CID, Storacha creds, Zama evaluator key presence).
+
+## ✅ Verification Commands
+
+```bash
+npm run hardhat:test
+npm run build
+npm run preflight
+```
+
+## 🧪 Core Demo Flows (No Mock in Strict Mode)
+
+1. Guardian + teen auth (Lit PKP sessions).
+2. Family onboarding bootstrap (`/api/onboarding/family`).
+3. Encrypted policy set + evaluate (`/api/policy/set`, `/api/policy/evaluate`).
+4. Savings execute (`/api/savings/execute`) -> Flow tx + Storacha CID + passport update.
+5. Subscription request -> guardian approve (`/api/subscription/request`, `/api/approval/approve`) -> Flow tx + Storacha CID + passport update.
+6. Evidence list (`/api/receipts/list`) + approval list (`/api/approval/list`) expose stable `items` and `count`.

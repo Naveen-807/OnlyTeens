@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
 
 const deployerKey = process.env.DEPLOYER_PRIVATE_KEY;
+const sepoliaRpcUrl = process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -18,6 +19,11 @@ const config: HardhatUserConfig = {
     flowTestnet: {
       url: "https://testnet.evm.nodes.onflow.org",
       chainId: 545,
+      accounts: deployerKey ? [deployerKey] : [],
+    },
+    sepolia: {
+      url: sepoliaRpcUrl,
+      chainId: 11155111,
       accounts: deployerKey ? [deployerKey] : [],
     },
     hardhat: {

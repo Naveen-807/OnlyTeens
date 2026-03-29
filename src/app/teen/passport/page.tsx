@@ -1,10 +1,10 @@
 "use client";
 
 import { PassportCard } from "@/components/PassportCard";
-import { useFamilyStore } from "@/store/familyStore";
+import { useAuthStore } from "@/store/authStore";
 
 export default function TeenPassportPage() {
-  const { passport } = useFamilyStore();
+  const { passport } = useAuthStore();
 
   if (!passport) {
     return <div className="text-sm text-gray-600">No passport loaded yet.</div>;
@@ -12,4 +12,3 @@ export default function TeenPassportPage() {
 
   return <PassportCard passport={passport} />;
 }
-

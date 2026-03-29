@@ -2,16 +2,16 @@
 
 import { ClawrenceChat } from "@/components/ClawrenceChat";
 import { useAuthStore } from "@/store/authStore";
-import { useFamilyStore } from "@/store/familyStore";
 
 export default function TeenChatPage() {
-  const { session } = useAuthStore();
-  const { familyId } = useFamilyStore();
+  const { session, family } = useAuthStore();
+  const familyId = family?.familyId;
+  const guardianAddress = family?.guardianAddress || "";
 
   if (!session || !familyId) {
     return (
       <div className="text-sm text-gray-600">
-        Missing session or familyId. Set `useAuthStore.session` and `useFamilyStore.familyId` first.
+        Missing session or family. Complete onboarding first.
       </div>
     );
   }
@@ -22,10 +22,9 @@ export default function TeenChatPage() {
       familyId={familyId as `0x${string}`}
       teenAddress={session.address as `0x${string}`}
       teenName="Teen"
-      guardianAddress={session.address}
+      guardianAddress={guardianAddress}
       clawrencePublicKey={session.pkpPublicKey}
       clawrencePkpTokenId={session.pkpTokenId}
     />
   );
 }
-

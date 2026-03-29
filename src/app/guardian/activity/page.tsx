@@ -1,29 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { ActivityFeed, type ActivityItem } from "@/components/ActivityFeed";
-import { useFamilyStore } from "@/store/familyStore";
+import { useAuthStore } from "@/store/authStore";
 
 export default function GuardianActivityPage() {
-  const { receipts, refreshAll } = useFamilyStore();
+  const { family } = useAuthStore();
+  const [items, setItems] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
-    refreshAll();
-  }, [refreshAll]);
+    const run = async () => {
+      if (!family?.familyId) return;
+      const res = await fetch(
+        `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`
+      );
+      const data = await res.json();
+      if (!data.success) return;
 
-  const items: ActivityItem[] = receipts.map((r) => ({
-    id: r.id,
-    type: r.type as any,
-    description: r.description,
-    amount: r.amount,
-    decision: r.decision as any,
-    flowTxHash: r.flowTxHash,
-    storachaCid: r.storachaCid,
-    passportLevel: r.passportLevel,
-    timestamp: r.timestamp,
-  }));
+      const mapped: ActivityItem[] = (data.receipts || []).map((r: any) => ({
+        id: r.id,
+        type: r.type as any,
+        description: r.description,
+        amount: r.amount,
+        decision: r.decision as any,
+        flowTxHash: r.flowTxHash,
+        storachaCid: r.storachaCid,
+        passportLevel: r.passportLevel,
+        timestamp: r.timestamp,
+      }));
+      setItems(mapped);
+    };
+    void run();
+  }, [family?.familyId]);
 
   return <ActivityFeed items={items} />;
 }
-

@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { fail, mapErrorToCode, ok } from "@/lib/api/response";
+import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { evaluateAction } from "@/lib/zama/policy";
 
 export async function POST(req: NextRequest) {
   try {
+    assertContractConfigForDemo();
     const body = await req.json();
+    if (!body.familyId || body.amount == null || body.passportLevel == null) {
+      return fail("BAD_REQUEST", "familyId, amount, passportLevel are required", 400);
+    }
 
     const result = await evaluateAction({
       familyId: body.familyId,
@@ -14,12 +20,8 @@ export async function POST(req: NextRequest) {
       account: body.account,
     });
 
-    return NextResponse.json({ success: true, ...result });
+    return ok(result);
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error?.message },
-      { status: 500 },
-    );
+    return fail(mapErrorToCode(error), error?.message || "Policy evaluation failed", 500);
   }
 }
-

@@ -4,6 +4,8 @@ import { createPublicClient, createWalletClient, decodeEventLog, http } from "vi
 import { privateKeyToAccount } from "viem/accounts";
 
 import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants";
+import { isDemoStrictMode } from "@/lib/runtime/demoMode";
+import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { getFhevmInstance } from "@/lib/zama/client";
 import type { PolicyDecision } from "@/lib/types";
 
@@ -36,11 +38,10 @@ export async function submitEncryptedPolicy(params: {
   teenAddress: `0x${string}`;
   guardianAccount?: any;
 }): Promise<{ txHash: string }> {
+  assertContractConfigForDemo();
   const account = params.guardianAccount ?? getEvaluatorAccount();
   if (!account) {
-    throw new Error(
-      "Missing guardian account (provide guardianAccount or set ZAMA_EVALUATOR_PRIVATE_KEY)",
-    );
+    throw new Error("POLICY_UNAVAILABLE:Missing evaluator account for policy set");
   }
 
   const fhevm = await getFhevmInstance();
@@ -78,8 +79,14 @@ export async function evaluateAction(params: {
   isRecurring: boolean;
   account?: any;
 }): Promise<{ decision: PolicyDecision; txHash: string }> {
+  assertContractConfigForDemo();
   const account = params.account ?? getEvaluatorAccount();
   if (!account) {
+    if (isDemoStrictMode()) {
+      throw new Error(
+        "POLICY_UNAVAILABLE:Missing evaluator account for encrypted policy evaluation",
+      );
+    }
     return {
       decision: params.isRecurring ? "YELLOW" : "GREEN",
       txHash: "",

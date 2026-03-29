@@ -64,3 +64,6 @@ typechain-types/
 # Lit / storage build artifacts
 ipfs*
 *.cid
+
+# generated runtime data
+/data/*.json

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { bootstrapSession } from "@/lib/auth/sessionBootstrap";
 import { getSessionSigs, mintPKPWithGoogle } from "@/lib/lit/auth";
 import type { UserSession } from "@/lib/types";
 
@@ -22,7 +23,15 @@ export async function POST(req: NextRequest) {
       authMethod,
     };
 
-    return NextResponse.json({ success: true, session });
+    const bootstrap = await bootstrapSession({
+      role: session.role,
+      pkpPublicKey: session.pkpPublicKey,
+      pkpTokenId: session.pkpTokenId,
+      authMethod: { ...authMethod, sessionSigs },
+      address: session.address,
+    });
+
+    return NextResponse.json({ success: true, ...bootstrap, session: { ...bootstrap.session, sessionSigs } });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message },
@@ -30,4 +39,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

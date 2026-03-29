@@ -1,14 +1,21 @@
 import "server-only";
 
-import { getFamilyByGuardian, getFamilyByTeen } from "@/lib/onboarding/familyService";
-import { getBalances } from "@/lib/flow/vault";
-import { getPassport } from "@/lib/flow/passport";
 import { getPendingRequestsByFamily } from "@/lib/approvals/durableApprovals";
-import type { UserSession, Role, TeenBalances, PassportState, ApprovalRequest } from "@/lib/types";
+import { getPassport } from "@/lib/flow/passport";
+import { getBalances } from "@/lib/flow/vault";
+import { getFamilyByGuardian, getFamilyByTeen } from "@/lib/onboarding/familyService";
+import type {
+  ApprovalRequest,
+  PassportState,
+  Role,
+  TeenBalances,
+  UserSession,
+} from "@/lib/types";
+import type { FamilyRecord } from "@/lib/types/onboarding";
 
 export interface BootstrapResult {
   session: UserSession;
-  family: any | null;
+  family: FamilyRecord | null;
   balances: TeenBalances | null;
   passport: PassportState | null;
   pendingApprovals: ApprovalRequest[];
@@ -23,13 +30,11 @@ export async function bootstrapSession(params: {
   authMethod: any;
   address: string;
 }): Promise<BootstrapResult> {
-  // Step 1: Find family record
   const family =
     params.role === "guardian"
       ? getFamilyByGuardian(params.address)
       : getFamilyByTeen(params.address);
 
-  // Step 2: Build session (sessionSigs will be populated client-side via Lit)
   const session: UserSession = {
     role: params.role,
     address: params.address,
@@ -50,12 +55,11 @@ export async function bootstrapSession(params: {
       needsOnboarding: true,
       onboardingMessage:
         params.role === "guardian"
-          ? "No family found. Create family onboarding to continue."
-          : "No family found. Ask your guardian to complete onboarding.",
+          ? "No family found. Start guardian onboarding to continue."
+          : "No family found. Ask your guardian to complete onboarding first.",
     };
   }
 
-  // Step 3: Load current on-chain state
   const familyId = family.familyId as `0x${string}`;
   const teenAddress = family.teenAddress as `0x${string}`;
 
@@ -63,27 +67,23 @@ export async function bootstrapSession(params: {
   let passport: PassportState | null = null;
 
   try {
-    const raw = await getBalances(familyId, teenAddress);
-    balances = raw;
+    balances = await getBalances(familyId, teenAddress);
   } catch {
-    /* contract may not have data yet */
+    // contract state may not exist yet during onboarding bootstrap
   }
 
   try {
     passport = await getPassport(familyId, teenAddress);
   } catch {
-    /* passport may not exist yet */
+    // passport may not exist yet during bootstrap
   }
-
-  // Step 4: Load pending approvals from durable store
-  const pendingApprovals = getPendingRequestsByFamily(family.familyId);
 
   return {
     session,
     family,
     balances,
     passport,
-    pendingApprovals,
+    pendingApprovals: getPendingRequestsByFamily(family.familyId),
     needsOnboarding: false,
   };
 }

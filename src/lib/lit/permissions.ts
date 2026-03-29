@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { SAFE_EXECUTOR_CID } from "@/lib/constants.server";
 import { getLitClient } from "@/lib/lit/client";
 
 export async function grantExecutorPermission(
@@ -33,4 +33,3 @@ export async function getPermissions(pkpTokenId: string): Promise<any> {
   const client = await getLitClient();
   return await (client as any).viewPKPPermissions({ tokenId: pkpTokenId });
 }
-

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { SAFE_EXECUTOR_CID } from "@/lib/constants.server";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { getLitClient } from "@/lib/lit/client";
 import type { ActionType, PolicyDecision } from "@/lib/types";

@@ -96,12 +96,14 @@ async function main() {
   );
   const passport = contractAddressFromEnvOrDeploy("NEXT_PUBLIC_PASSPORT_CONTRACT", "passport");
   const policy = process.env.NEXT_PUBLIC_POLICY_CONTRACT || process.env.POLICY_CONTRACT;
+  const policyAccess = process.env.POLICY_ACCESS_CONTRACT || process.env.ACCESS_CONTRACT_SEPOLIA;
 
   assertNonZeroAddress("access", access);
   assertNonZeroAddress("vault", vault);
   assertNonZeroAddress("scheduler", scheduler);
   assertNonZeroAddress("passport", passport);
   assertNonZeroAddress("policy", policy);
+  assertNonZeroAddress("policyAccess", policyAccess);
   console.log("  Contract addresses look configured");
 
   const flowRpc = process.env.GAS_FREE_RPC_URL || "https://testnet.evm.nodes.onflow.org";
@@ -116,6 +118,8 @@ async function main() {
 
   assertStorachaCreds();
   assertEvaluatorKeyFundedHint();
+  requiredEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID");
+  console.log("  Google OAuth client configured");
 
   console.log("Preflight passed.");
 }

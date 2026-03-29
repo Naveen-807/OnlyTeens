@@ -5,6 +5,7 @@ import * as path from "path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const RECEIPTS_FILE = path.join(DATA_DIR, "receipts.json");
+let writeLock: Promise<void> = Promise.resolve();
 
 export interface StoredReceipt {
   id: string;
@@ -23,6 +24,7 @@ export interface StoredReceipt {
   passportLeveledUp: boolean;
   litActionCid: string;
   zamaContractAddress: string;
+  zamaTxHash: string;
   clawrenceExplanation: string;
   timestamp: string;
 }
@@ -47,10 +49,21 @@ function saveAll(data: StoredReceipt[]): void {
   fs.writeFileSync(RECEIPTS_FILE, JSON.stringify(data, null, 2));
 }
 
-export function addReceipt(receipt: StoredReceipt): void {
-  const all = loadAll();
-  all.unshift(receipt); // newest first
-  saveAll(all);
+function withWriteLock<T>(task: () => T | Promise<T>): Promise<T> {
+  const next = writeLock.then(task, task);
+  writeLock = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+export function addReceipt(receipt: StoredReceipt): Promise<void> {
+  return withWriteLock(async () => {
+    const all = loadAll();
+    all.unshift(receipt);
+    saveAll(all);
+  });
 }
 
 export function getReceiptsByFamily(familyId: string): StoredReceipt[] {
@@ -95,6 +108,7 @@ export function receiptFromFlowResult(
     passportLeveledUp: flowResult.passport?.leveledUp || false,
     litActionCid: flowResult.lit?.actionCid || "",
     zamaContractAddress: flowResult.zama?.contractAddress || "",
+    zamaTxHash: flowResult.zama?.evaluationTxHash || "",
     clawrenceExplanation: flowResult.clawrence?.preExplanation || "",
     timestamp: new Date().toISOString(),
   };

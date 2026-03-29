@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (cached) return ok(cached as Record<string, unknown>);
 
     const result = await executeApprovedSubscription(body);
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, result);
+    if (idempotencyKey) await setCachedIdempotentResult(idempotencyKey, result);
     return ok(result);
   } catch (error: any) {
     return fail(

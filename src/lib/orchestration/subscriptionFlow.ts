@@ -20,7 +20,7 @@ import { flowToWei, inrToPaise } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import type { ApprovalRequest, FlowResult, UserSession } from "@/lib/types";
-import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants.server";
 
 export async function requestSubscription(params: {
   session: UserSession;
@@ -108,18 +108,21 @@ export async function requestSubscription(params: {
       passportStreak: passportState.weeklyStreak,
     });
 
-    const pendingReceipt = await uploadJSON({
-      type: "pending_approval",
-      familyId: params.familyId,
-      teen: params.teenAddress,
-      action: "subscription",
-      serviceName: params.serviceName,
-      amount: params.monthlyAmount,
-      decision,
-      timestamp: new Date().toISOString(),
-    });
+    const pendingReceipt = await uploadJSON(
+      {
+        type: "pending_approval",
+        familyId: params.familyId,
+        teen: params.teenAddress,
+        action: "subscription",
+        serviceName: params.serviceName,
+        amount: params.monthlyAmount,
+        decision,
+        timestamp: new Date().toISOString(),
+      },
+      { familyId: params.familyId, role: "executor" },
+    );
 
-    const approvalRequest: ApprovalRequest = createApprovalRequest({
+    const approvalRequest: ApprovalRequest = await createApprovalRequest({
       familyId: params.familyId,
       teenAddress: params.teenAddress,
       teenName: params.teenName,
@@ -270,7 +273,10 @@ export async function executeApprovedSubscription(params: {
         decision: params.decision,
         flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
         lit: { actionCid: SAFE_EXECUTOR_CID },
-        zama: { contractAddress: CONTRACTS.policy },
+        zama: {
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: params.zamaTxHash || "",
+        },
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
         passport: { newLevel: passportAfter.level, leveledUp },
         clawrence: { preExplanation: params.preExplanation },
@@ -283,7 +289,7 @@ export async function executeApprovedSubscription(params: {
         amount: params.monthlyAmount,
       }
     );
-    addReceipt(localReceipt);
+    await addReceipt(localReceipt);
 
     let passportCid: { cid: string; url: string } | null = null;
     if (leveledUp) {

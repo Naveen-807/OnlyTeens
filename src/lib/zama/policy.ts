@@ -3,7 +3,7 @@ import "server-only";
 import { createPublicClient, createWalletClient, decodeEventLog, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants";
+import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants.server";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { getFhevmInstance } from "@/lib/zama/client";

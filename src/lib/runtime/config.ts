@@ -1,4 +1,4 @@
-import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants.server";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -37,4 +37,3 @@ export function assertEnvForDemo(required: string[]): void {
     }
   }
 }
-

@@ -1,30 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
+import { keccak256, parseAbi, stringToBytes, toHex, type Chain } from "viem";
 
-import { parseAbi, keccak256, stringToBytes, toHex, type Chain } from "viem";
-
-type DeploymentsJson = {
-  contracts?: {
-    access?: { address?: string };
-    vault?: { address?: string };
-    scheduler?: { address?: string };
-    passport?: { address?: string };
-  };
-};
-
-function readDeployments(): DeploymentsJson | null {
-  try {
-    const deploymentsPath = path.join(process.cwd(), "deployments.json");
-    if (!fs.existsSync(deploymentsPath)) return null;
-    return JSON.parse(fs.readFileSync(deploymentsPath, "utf8")) as DeploymentsJson;
-  } catch {
-    return null;
-  }
-}
-
-const deployments = readDeployments();
-
-// ═══ Chain Config ═══
 export const FLOW_TESTNET = {
   id: 545,
   name: "Flow EVM Testnet",
@@ -43,43 +18,14 @@ export const SEPOLIA = {
   name: "Ethereum Sepolia",
   nativeCurrency: { name: "Sepolia Ether", symbol: "SEP", decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"] },
-    public: { http: [process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"] },
+    default: { http: [process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"] },
+    public: { http: [process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org"] },
   },
   blockExplorers: {
     default: { name: "Etherscan", url: "https://sepolia.etherscan.io" },
   },
 } as const satisfies Chain;
 
-// ═══ Contract Addresses ═══
-export const CONTRACTS = {
-  access:
-    (deployments?.contracts?.access?.address ||
-      process.env.NEXT_PUBLIC_ACCESS_CONTRACT ||
-      process.env.ACCESS_CONTRACT ||
-      "0x0000000000000000000000000000000000000000") as `0x${string}`,
-  vault:
-    (deployments?.contracts?.vault?.address ||
-      process.env.NEXT_PUBLIC_VAULT_CONTRACT ||
-      process.env.VAULT_CONTRACT ||
-      "0x0000000000000000000000000000000000000000") as `0x${string}`,
-  scheduler:
-    (deployments?.contracts?.scheduler?.address ||
-      process.env.NEXT_PUBLIC_SCHEDULER_CONTRACT ||
-      process.env.SCHEDULER_CONTRACT ||
-      "0x0000000000000000000000000000000000000000") as `0x${string}`,
-  passport:
-    (deployments?.contracts?.passport?.address ||
-      process.env.NEXT_PUBLIC_PASSPORT_CONTRACT ||
-      process.env.PASSPORT_CONTRACT ||
-      "0x0000000000000000000000000000000000000000") as `0x${string}`,
-  policy:
-    (process.env.NEXT_PUBLIC_POLICY_CONTRACT ||
-      process.env.POLICY_CONTRACT ||
-      "0x0000000000000000000000000000000000000000") as `0x${string}`,
-} as const;
-
-// ═══ ABIs (minimal, only what the app calls) ═══
 export const ACCESS_ABI = parseAbi([
   "function registerFamily(bytes32 familyId, address guardian, address teen, address executor) external",
   "function updateExecutor(bytes32 familyId, address newExecutor) external",
@@ -139,10 +85,19 @@ export const POLICY_ABI = parseAbi([
   "event PolicyEvaluated(bytes32 indexed familyId, address indexed teen, string actionType, uint256 amount, uint8 decision, uint256 timestamp)",
 ]);
 
-// ═══ Helper ═══
+export const PASSPORT_LEVELS = [
+  { level: 0, name: "Starter", threshold: 0 },
+  { level: 1, name: "Explorer", threshold: 5 },
+  { level: 2, name: "Saver", threshold: 15 },
+  { level: 3, name: "Manager", threshold: 35 },
+  { level: 4, name: "Planner", threshold: 70 },
+  { level: 5, name: "Independent", threshold: 150 },
+] as const;
+
 export function makeFamilyId(label: string): `0x${string}` {
   return keccak256(toHex(stringToBytes(label))) as `0x${string}`;
 }
 
 export const CURRENCY = "₹";
-export const SAFE_EXECUTOR_CID = process.env.NEXT_PUBLIC_SAFE_EXECUTOR_CID || process.env.SAFE_EXECUTOR_CID || "";
+export const SAFE_EXECUTOR_CID =
+  process.env.NEXT_PUBLIC_SAFE_EXECUTOR_CID || process.env.SAFE_EXECUTOR_CID || "";

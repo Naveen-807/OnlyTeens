@@ -3,7 +3,7 @@ import "server-only";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { FLOW_TESTNET } from "@/lib/constants";
+import { FLOW_TESTNET } from "@/lib/constants.server";
 
 export const flowPublicClient = createPublicClient({
   chain: FLOW_TESTNET,

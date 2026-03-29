@@ -12,6 +12,7 @@
     "hardhat:compile": "hardhat compile",
     "hardhat:test": "hardhat test",
     "hardhat:deploy:flow": "hardhat run scripts/deploy.cjs --network flowTestnet",
+    "hardhat:deploy:access:sepolia": "hardhat run scripts/deployAccessSepolia.cjs --network sepolia",
     "hardhat:deploy:policy": "hardhat run scripts/deployPolicy.cjs --network sepolia"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "openai": "^6.33.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.3.1",
     "viem": "2.38.3",
     "zustand": "^5.0.8"

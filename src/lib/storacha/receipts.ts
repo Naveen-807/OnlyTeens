@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants.server";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { uploadJSON } from "@/lib/storacha/client";
 import type { PolicyDecision, Proof18Receipt } from "@/lib/types";
@@ -12,7 +12,10 @@ export async function storeReceipt(
   if (receipt.version !== "v1") {
     throw new Error("EVIDENCE_WRITE_FAILED:Unsupported receipt schema version");
   }
-  const result = await uploadJSON(receipt);
+  const result = await uploadJSON(receipt, {
+    familyId: receipt.familyId,
+    role: "executor",
+  });
   receipt.storachaCid = result.cid;
   return result;
 }
@@ -142,11 +145,14 @@ export async function storePassportSnapshot(params: {
   triggeringAction: string;
   flowTxHash: string;
 }): Promise<{ cid: string; url: string }> {
-  return uploadJSON({
-    type: "passport_update",
-    ...params,
-    timestamp: new Date().toISOString(),
-  });
+  return uploadJSON(
+    {
+      type: "passport_update",
+      ...params,
+      timestamp: new Date().toISOString(),
+    },
+    { familyId: params.familyId, role: "executor" },
+  );
 }
 
 export async function storeConversationLog(params: {
@@ -157,9 +163,12 @@ export async function storeConversationLog(params: {
   flowTxHashes: string[];
   receiptCids: string[];
 }): Promise<{ cid: string; url: string }> {
-  return uploadJSON({
-    type: "conversation_log",
-    ...params,
-    timestamp: new Date().toISOString(),
-  });
+  return uploadJSON(
+    {
+      type: "conversation_log",
+      ...params,
+      timestamp: new Date().toISOString(),
+    },
+    { familyId: params.familyId, role: "executor" },
+  );
 }

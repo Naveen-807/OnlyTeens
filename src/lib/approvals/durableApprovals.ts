@@ -7,6 +7,7 @@ import type { ApprovalRequest } from "@/lib/types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const APPROVALS_FILE = path.join(DATA_DIR, "approvals.json");
+let writeLock: Promise<void> = Promise.resolve();
 
 function ensureFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -28,23 +29,34 @@ function saveAll(data: Record<string, ApprovalRequest>): void {
   fs.writeFileSync(APPROVALS_FILE, JSON.stringify(data, null, 2));
 }
 
+function withWriteLock<T>(task: () => T | Promise<T>): Promise<T> {
+  const next = writeLock.then(task, task);
+  writeLock = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
 // ─── CREATE ───
-export function createApprovalRequest(
+export async function createApprovalRequest(
   request: Omit<ApprovalRequest, "id" | "status" | "requestedAt">
-): ApprovalRequest {
-  const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const fullRequest: ApprovalRequest = {
-    ...request,
-    id,
-    status: "pending",
-    requestedAt: new Date().toISOString(),
-  };
+): Promise<ApprovalRequest> {
+  return withWriteLock(async () => {
+    const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const fullRequest: ApprovalRequest = {
+      ...request,
+      id,
+      status: "pending",
+      requestedAt: new Date().toISOString(),
+    };
 
-  const all = loadAll();
-  all[id] = fullRequest;
-  saveAll(all);
+    const all = loadAll();
+    all[id] = fullRequest;
+    saveAll(all);
 
-  return fullRequest;
+    return fullRequest;
+  });
 }
 
 // ─── READ ───
@@ -105,23 +117,36 @@ export async function approveRequestDurable(
   request.status = "approved";
   request.guardianNote = guardianNote || "Approved by guardian";
 
-  const storachaResult = await uploadJSON({
-    type: "guardian_approval",
-    requestId,
-    familyId: request.familyId,
-    teen: request.teenAddress,
-    actionType: request.actionType,
-    description: request.description,
-    amount: request.amount,
-    decision: request.policyDecision,
-    approved: true,
-    guardianNote: request.guardianNote,
-    timestamp: new Date().toISOString(),
-  });
+  const storachaResult = await uploadJSON(
+    {
+      type: "guardian_approval",
+      requestId,
+      familyId: request.familyId,
+      teen: request.teenAddress,
+      actionType: request.actionType,
+      description: request.description,
+      amount: request.amount,
+      decision: request.policyDecision,
+      approved: true,
+      guardianNote: request.guardianNote,
+      timestamp: new Date().toISOString(),
+    },
+    { familyId: request.familyId, role: "guardian" },
+  );
 
-  request.storachaCid = storachaResult.cid;
-  all[requestId] = request;
-  saveAll(all);
+  await withWriteLock(async () => {
+    const latest = loadAll();
+    const current = latest[requestId];
+    if (!current) throw new Error("Request not found");
+    if (current.status !== "pending")
+      throw new Error(`Request already ${current.status}`);
+
+    current.status = "approved";
+    current.guardianNote = guardianNote || "Approved by guardian";
+    current.storachaCid = storachaResult.cid;
+    latest[requestId] = current;
+    saveAll(latest);
+  });
 
   return {
     request,
@@ -144,21 +169,34 @@ export async function rejectRequestDurable(
   request.status = "rejected";
   request.guardianNote = guardianNote;
 
-  const storachaResult = await uploadJSON({
-    type: "guardian_rejection",
-    requestId,
-    familyId: request.familyId,
-    teen: request.teenAddress,
-    description: request.description,
-    amount: request.amount,
-    approved: false,
-    guardianNote,
-    timestamp: new Date().toISOString(),
-  });
+  const storachaResult = await uploadJSON(
+    {
+      type: "guardian_rejection",
+      requestId,
+      familyId: request.familyId,
+      teen: request.teenAddress,
+      description: request.description,
+      amount: request.amount,
+      approved: false,
+      guardianNote,
+      timestamp: new Date().toISOString(),
+    },
+    { familyId: request.familyId, role: "guardian" },
+  );
 
-  request.storachaCid = storachaResult.cid;
-  all[requestId] = request;
-  saveAll(all);
+  await withWriteLock(async () => {
+    const latest = loadAll();
+    const current = latest[requestId];
+    if (!current) throw new Error("Request not found");
+    if (current.status !== "pending")
+      throw new Error(`Request already ${current.status}`);
+
+    current.status = "rejected";
+    current.guardianNote = guardianNote;
+    current.storachaCid = storachaResult.cid;
+    latest[requestId] = current;
+    saveAll(latest);
+  });
 
   return {
     request,
@@ -171,17 +209,19 @@ export function markExecuted(
   requestId: string,
   flowTxHash: string,
   receiptCid: string
-): void {
-  const all = loadAll();
-  const request = all[requestId];
-  if (!request) return;
+): Promise<void> {
+  return withWriteLock(async () => {
+    const all = loadAll();
+    const request = all[requestId];
+    if (!request) return;
 
-  (request as any).executionResult = {
-    flowTxHash,
-    receiptCid,
-    executedAt: new Date().toISOString(),
-  };
+    (request as any).executionResult = {
+      flowTxHash,
+      receiptCid,
+      executedAt: new Date().toISOString(),
+    };
 
-  all[requestId] = request;
-  saveAll(all);
+    all[requestId] = request;
+    saveAll(all);
+  });
 }

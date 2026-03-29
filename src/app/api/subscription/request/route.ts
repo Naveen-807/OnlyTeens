@@ -5,7 +5,6 @@ import {
   getCachedIdempotentResult,
   setCachedIdempotentResult,
 } from "@/lib/api/idempotency";
-import { addPendingRequest } from "@/lib/orchestration/approvalFlow";
 import { requestSubscription } from "@/lib/orchestration/subscriptionFlow";
 
 export async function POST(req: NextRequest) {
@@ -35,11 +34,7 @@ export async function POST(req: NextRequest) {
       clawrencePublicKey: body.clawrencePublicKey,
     });
 
-    if (result.requiresApproval && result.approvalRequest) {
-      addPendingRequest(result.approvalRequest);
-    }
-
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, result);
+    if (idempotencyKey) await setCachedIdempotentResult(idempotencyKey, result);
     return ok(result);
   } catch (error: any) {
     return fail(

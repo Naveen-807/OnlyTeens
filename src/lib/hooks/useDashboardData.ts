@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuthStore } from "@/store/authStore";
-import type { TeenBalances, PassportState, ApprovalRequest } from "@/lib/types";
+import { useCallback, useEffect, useState } from "react";
+
+import type { ApprovalRequest, PassportState, TeenBalances } from "@/lib/types";
 import type { StoredReceipt } from "@/lib/receipts/receiptStore";
+import { useAuthStore } from "@/store/authStore";
 
 interface DashboardData {
   balances: TeenBalances | null;
@@ -16,13 +17,16 @@ interface DashboardData {
 }
 
 export function useDashboardData(): DashboardData {
-  const { family } = useAuthStore();
+  const familyId = useAuthStore((state) => state.family?.familyId);
+  const balances = useAuthStore((state) => state.balances);
+  const passport = useAuthStore((state) => state.passport);
+  const pendingApprovals = useAuthStore((state) => state.pendingApprovals);
   const [receipts, setReceipts] = useState<StoredReceipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!family?.familyId) {
+    if (!familyId) {
       setIsLoading(false);
       return;
     }
@@ -30,13 +34,9 @@ export function useDashboardData(): DashboardData {
     setError(null);
 
     try {
-      // Refresh auth store (balances, passport, approvals)
       await useAuthStore.getState().refreshState();
 
-      // Fetch receipts from durable store
-      const res = await fetch(
-        `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`
-      );
+      const res = await fetch(`/api/receipts/list?familyId=${encodeURIComponent(familyId)}`);
       const data = await res.json();
       if (data.success) {
         setReceipts(data.receipts);
@@ -46,18 +46,24 @@ export function useDashboardData(): DashboardData {
     } finally {
       setIsLoading(false);
     }
-  }, [family?.familyId]);
+  }, [familyId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
-  const state = useAuthStore.getState();
+  useEffect(() => {
+    if (pendingApprovals.length === 0) return;
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 10000);
+    return () => window.clearInterval(interval);
+  }, [pendingApprovals.length, refresh]);
 
   return {
-    balances: state.balances,
-    passport: state.passport,
-    pendingApprovals: state.pendingApprovals,
+    balances,
+    passport,
+    pendingApprovals,
     receipts,
     isLoading,
     error,

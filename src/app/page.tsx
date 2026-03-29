@@ -1,33 +1,63 @@
+"use client";
+
 import Link from "next/link";
+
+import { LoginButton } from "@/components/LoginButton";
 
 export default function Page() {
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-bold">Proof18</h1>
-      <p className="mt-2 text-gray-600">
-        Teen-first mini-bank with AI guidance (Flow + Lit + Zama + Storacha).
-      </p>
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-12">
+      <div className="max-w-2xl space-y-3">
+        <div className="inline-flex rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600">
+          Flow + Lit + Zama + Storacha
+        </div>
+        <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
+          Proof18
+        </h1>
+        <p className="text-base text-slate-600">
+          Teen-first money guardrails with encrypted family rules, Lit-controlled execution,
+          Flow settlement, and Storacha evidence.
+        </p>
+      </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/teen"
-          className="rounded-xl border p-5 hover:bg-gray-50"
-        >
-          <div className="text-lg font-semibold">Teen</div>
-          <div className="mt-1 text-sm text-gray-600">
-            Save, subscribe, chat with Clawrence, and track your Passport.
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="space-y-3">
+            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Guardian
+            </div>
+            <h2 className="text-2xl font-semibold text-slate-900">Start family onboarding</h2>
+            <p className="text-sm leading-6 text-slate-600">
+              Authenticate, set encrypted policy thresholds, mint the dedicated Clawrence PKP,
+              and register the family on-chain.
+            </p>
           </div>
-        </Link>
+          <div className="mt-6 space-y-4">
+            <LoginButton role="guardian" redirectTo="/guardian/onboarding" />
+            <Link
+              href="/guardian/onboarding"
+              className="inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Open guardian onboarding →
+            </Link>
+          </div>
+        </section>
 
-        <Link
-          href="/guardian"
-          className="rounded-xl border p-5 hover:bg-gray-50"
-        >
-          <div className="text-lg font-semibold">Guardian</div>
-          <div className="mt-1 text-sm text-gray-600">
-            Set encrypted policy, approve requests, and audit receipts.
+        <section className="rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
+          <div className="space-y-3">
+            <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Teen
+            </div>
+            <h2 className="text-2xl font-semibold">Enter the teen dashboard</h2>
+            <p className="text-sm leading-6 text-slate-300">
+              Log in with Google, recover your PKP session, and use save, subscribe, and chat
+              flows once your guardian has finished onboarding.
+            </p>
           </div>
-        </Link>
+          <div className="mt-6">
+            <LoginButton role="teen" redirectTo="/teen" />
+          </div>
+        </section>
       </div>
     </main>
   );

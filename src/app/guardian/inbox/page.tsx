@@ -1,21 +1,31 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+
+import type { ApprovalRequest, FlowResult } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
-import type { ApprovalRequest } from "@/lib/types";
+
+type ApprovalOutcome = {
+  requestId: string;
+  type: "approved" | "rejected";
+  note: string;
+  execution?: FlowResult;
+  approvalUrl?: string;
+};
 
 export default function GuardianInbox() {
   const { session, family } = useAuthStore();
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [processing, setProcessing] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastOutcome, setLastOutcome] = useState<ApprovalOutcome | null>(null);
 
   const fetchRequests = useCallback(async () => {
     if (!family?.familyId) return;
     setIsLoading(true);
     try {
       const res = await fetch(
-        `/api/approval/list?familyId=${encodeURIComponent(family.familyId)}`
+        `/api/approval/list?familyId=${encodeURIComponent(family.familyId)}`,
       );
       const data = await res.json();
       if (data.success) setRequests(data.requests ?? data.approvals ?? []);
@@ -28,7 +38,6 @@ export default function GuardianInbox() {
 
   useEffect(() => {
     fetchRequests();
-    // Poll every 10 seconds for new requests
     const interval = setInterval(fetchRequests, 10000);
     return () => clearInterval(interval);
   }, [fetchRequests]);
@@ -43,16 +52,24 @@ export default function GuardianInbox() {
         body: JSON.stringify({ requestId, guardianNote: note, session }),
       });
       const data = await res.json();
-      if (data.success) {
-        setRequests((prev) => prev.filter((r) => r.id !== requestId));
-        alert(
-          `✅ Approved! Receipt CID: ${data.execution?.storacha?.receiptCid || "stored"}`
-        );
-      } else {
-        alert(`Failed: ${data.error}`);
+      if (!data.success) {
+        throw new Error(data.error || "Approval failed");
       }
+
+      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setLastOutcome({
+        requestId,
+        type: "approved",
+        note,
+        execution: data.execution,
+        approvalUrl: data.approval?.url,
+      });
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      setLastOutcome({
+        requestId,
+        type: "rejected",
+        note: err?.message || "Approval failed",
+      });
     } finally {
       setProcessing(null);
     }
@@ -69,12 +86,17 @@ export default function GuardianInbox() {
         body: JSON.stringify({ requestId, guardianNote: reason }),
       });
       const data = await res.json();
-      if (data.success) {
-        setRequests((prev) => prev.filter((r) => r.id !== requestId));
-        alert("❌ Declined.");
+      if (!data.success) {
+        throw new Error(data.error || "Decline failed");
       }
+      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setLastOutcome({ requestId, type: "rejected", note: reason });
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      setLastOutcome({
+        requestId,
+        type: "rejected",
+        note: err?.message || "Decline failed",
+      });
     } finally {
       setProcessing(null);
     }
@@ -99,27 +121,65 @@ export default function GuardianInbox() {
         )}
       </h2>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-gray-400 animate-pulse">
-          Loading requests...
+      {lastOutcome ? (
+        <div
+          className={`rounded-xl border p-4 text-sm ${
+            lastOutcome.type === "approved"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-slate-200 bg-slate-50 text-slate-700"
+          }`}
+        >
+          <div className="font-semibold">
+            {lastOutcome.type === "approved" ? "Approval executed" : "Request declined"}
+          </div>
+          <div className="mt-1">{lastOutcome.note}</div>
+          {lastOutcome.approvalUrl ? (
+            <a
+              className="mt-3 block text-emerald-700 underline"
+              href={lastOutcome.approvalUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View approval record
+            </a>
+          ) : null}
+          {lastOutcome.execution?.flow?.explorerUrl ? (
+            <a
+              className="mt-2 block text-emerald-700 underline"
+              href={lastOutcome.execution.flow.explorerUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View Flow execution
+            </a>
+          ) : null}
+          {lastOutcome.execution?.storacha?.receiptUrl ? (
+            <a
+              className="mt-2 block text-emerald-700 underline"
+              href={lastOutcome.execution.storacha.receiptUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View Storacha receipt
+            </a>
+          ) : null}
         </div>
+      ) : null}
+
+      {isLoading ? (
+        <div className="text-center py-8 text-gray-400 animate-pulse">Loading requests...</div>
       ) : requests.length === 0 ? (
         <div className="text-center py-8 text-gray-400">
           <p className="text-4xl mb-2">✨</p>
           <p>No pending requests</p>
-          <p className="text-xs mt-1">
-            Requests from your teen will appear here
-          </p>
+          <p className="text-xs mt-1">Requests from your teen will appear here</p>
         </div>
       ) : (
         requests.map((req) => (
           <div key={req.id} className="border rounded-xl p-4 space-y-3">
-            {/* Header */}
             <div className="flex justify-between items-start">
               <div>
-                <p className="font-medium">
-                  {req.teenName} wants to {req.actionType}
-                </p>
+                <p className="font-medium">{req.teenName} wants to {req.actionType}</p>
                 <p className="text-sm text-gray-600">{req.description}</p>
               </div>
               <span
@@ -133,15 +193,11 @@ export default function GuardianInbox() {
               </span>
             </div>
 
-            {/* Clawrence explanation */}
             <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <p className="font-medium text-gray-600 mb-1">
-                🤖 Clawrence says:
-              </p>
+              <p className="font-medium text-gray-600 mb-1">🤖 Clawrence says:</p>
               <p>{req.clawrenceGuardianExplanation}</p>
             </div>
 
-            {/* Context */}
             <div className="flex justify-between text-sm text-gray-500">
               <span>
                 {req.currency}
@@ -157,7 +213,6 @@ export default function GuardianInbox() {
               Requested {new Date(req.requestedAt).toLocaleString()}
             </p>
 
-            {/* Actions */}
             <div className="flex gap-2">
               <button
                 onClick={() => handleApprove(req.id)}

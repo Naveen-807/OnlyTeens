@@ -1,26 +1,12 @@
-// ═══ Roles ═══
+import { PASSPORT_LEVELS } from "@/lib/constants";
+
 export type Role = "guardian" | "teen" | "executor";
-
-// ═══ Policy Decisions ═══
 export type PolicyDecision = "GREEN" | "YELLOW" | "RED" | "BLOCKED";
-
-// ═══ Action Types ═══
 export type ActionType = "savings" | "subscription" | "payment";
-
-// ═══ Schedule Types ═══
 export type ScheduleType = "SAVINGS" | "SUBSCRIPTION";
 
-// ═══ Passport Levels ═══
-export const PASSPORT_LEVELS = [
-  { level: 0, name: "Starter", threshold: 0 },
-  { level: 1, name: "Explorer", threshold: 5 },
-  { level: 2, name: "Saver", threshold: 15 },
-  { level: 3, name: "Manager", threshold: 35 },
-  { level: 4, name: "Planner", threshold: 70 },
-  { level: 5, name: "Independent", threshold: 150 },
-] as const;
+export { PASSPORT_LEVELS };
 
-// ═══ Family ═══
 export interface Family {
   familyId: string;
   guardian: string;
@@ -29,7 +15,6 @@ export interface Family {
   active: boolean;
 }
 
-// ═══ Session ═══
 export interface UserSession {
   role: Role;
   address: string;
@@ -40,14 +25,12 @@ export interface UserSession {
   authMethod: any;
 }
 
-// ═══ Balances ═══
 export interface TeenBalances {
   savings: string;
   subscriptionReserve: string;
   spendable: string;
 }
 
-// ═══ Passport ═══
 export interface PassportState {
   level: number;
   levelName: string;
@@ -65,7 +48,6 @@ export interface PassportState {
   };
 }
 
-// ═══ Approval Request ═══
 export interface ApprovalRequest {
   id: string;
   familyId: string;
@@ -89,7 +71,6 @@ export interface ApprovalRequest {
   storachaCid?: string;
 }
 
-// ═══ Receipt (stored on Storacha) ═══
 export interface Proof18Receipt {
   version: "v1";
   type: ActionType | "approval" | "passport_update";
@@ -138,7 +119,6 @@ export interface Proof18Receipt {
   storachaCid?: string;
 }
 
-// ═══ Flow Event Parsed ═══
 export interface ParsedFlowEvent {
   name: string;
   args: Record<string, any>;
@@ -146,7 +126,6 @@ export interface ParsedFlowEvent {
   blockNumber: bigint;
 }
 
-// ═══ Orchestration Result ═══
 export interface FlowResult {
   success: boolean;
   decision: PolicyDecision;
@@ -188,7 +167,6 @@ export interface FlowResult {
   error?: string;
 }
 
-// ═══ Clawrence Intent ═══
 export interface ClawrenceIntent {
   type: ActionType | "question" | "status" | "unknown";
   amount?: number;
@@ -200,7 +178,6 @@ export interface ClawrenceIntent {
   confidence: number;
 }
 
-// ═══ Schedule ═══
 export interface ScheduleInfo {
   scheduleId: number;
   familyId: string;

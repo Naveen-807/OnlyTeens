@@ -1,5 +1,11 @@
 export interface OnboardingState {
-  step: "guardian-auth" | "set-policy" | "invite-teen" | "teen-auth" | "complete";
+  step:
+    | "guardian-auth"
+    | "set-policy"
+    | "invite-teen"
+    | "teen-auth"
+    | "create-family"
+    | "complete";
   guardianAddress?: string;
   guardianPkpPublicKey?: string;
   guardianPkpTokenId?: string;
@@ -32,6 +38,12 @@ export interface FamilyRecord {
   schedulerContract: string;
   passportContract: string;
   policyContract: string;
+  policyAccessContract?: string;
+  storachaDelegations?: {
+    guardian: string;
+    teen: string;
+    executor: string;
+  };
   createdAt: string;
   active: boolean;
 }

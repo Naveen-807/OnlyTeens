@@ -2,28 +2,37 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+
 import type {
-  UserSession,
+  ApprovalRequest,
+  PassportState,
   Role,
   TeenBalances,
-  PassportState,
-  ApprovalRequest,
+  UserSession,
 } from "@/lib/types";
+import type { FamilyRecord } from "@/lib/types/onboarding";
+
+interface AuthBootstrapPayload {
+  session: UserSession;
+  family?: FamilyRecord | null;
+  balances?: TeenBalances | null;
+  passport?: PassportState | null;
+  pendingApprovals?: ApprovalRequest[];
+  needsOnboarding?: boolean;
+  onboardingMessage?: string;
+}
 
 interface AuthState {
-  // Session
   session: UserSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   role: Role | null;
-
-  // Family context (loaded at bootstrap)
-  family: any | null;
+  family: FamilyRecord | null;
   balances: TeenBalances | null;
   passport: PassportState | null;
   pendingApprovals: ApprovalRequest[];
-
-  // Actions
+  needsOnboarding: boolean;
+  onboardingMessage: string | null;
   login: (params: {
     role: Role;
     pkpPublicKey: string;
@@ -31,27 +40,56 @@ interface AuthState {
     authMethod: any;
     address: string;
   }) => Promise<void>;
+  hydrateSession: (payload: AuthBootstrapPayload) => void;
   setSession: (session: UserSession) => void;
+  setFamilyContext: (family: FamilyRecord | null) => void;
   logout: () => void;
   clearSession: () => void;
   setLoading: (loading: boolean) => void;
   refreshState: () => Promise<void>;
 }
 
+const emptyAuthState = {
+  session: null,
+  role: null,
+  family: null,
+  balances: null,
+  passport: null,
+  pendingApprovals: [],
+  isAuthenticated: false,
+  needsOnboarding: false,
+  onboardingMessage: null,
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      session: null,
-      isAuthenticated: false,
+      ...emptyAuthState,
       isLoading: false,
-      role: null,
-      family: null,
-      balances: null,
-      passport: null,
-      pendingApprovals: [],
+
+      hydrateSession: (payload) =>
+        set({
+          session: payload.session,
+          role: payload.session.role,
+          family: payload.family ?? null,
+          balances: payload.balances ?? null,
+          passport: payload.passport ?? null,
+          pendingApprovals: payload.pendingApprovals ?? [],
+          isAuthenticated: true,
+          needsOnboarding: Boolean(payload.needsOnboarding),
+          onboardingMessage: payload.onboardingMessage ?? null,
+        }),
 
       setSession: (session) =>
-        set({ session, role: session.role, isAuthenticated: true }),
+        set({
+          session,
+          role: session.role,
+          isAuthenticated: true,
+          needsOnboarding: false,
+          onboardingMessage: null,
+        }),
+
+      setFamilyContext: (family) => set({ family }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
@@ -64,52 +102,21 @@ export const useAuthStore = create<AuthState>()(
             body: JSON.stringify(params),
           });
           const data = await res.json();
-
           if (!data.success) throw new Error(data.error);
-
-          set({
-            session: data.session,
-            role: data.session?.role || params.role,
-            family: data.family,
-            balances: data.balances,
-            passport: data.passport,
-            pendingApprovals: data.pendingApprovals ?? [],
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          get().hydrateSession(data);
+          set({ isLoading: false });
         } catch (error: any) {
           set({ isLoading: false });
           throw error;
         }
       },
 
-      logout: () => {
-        set({
-          session: null,
-          role: null,
-          family: null,
-          balances: null,
-          passport: null,
-          pendingApprovals: [],
-          isAuthenticated: false,
-        });
-      },
-
-      clearSession: () => {
-        set({
-          session: null,
-          role: null,
-          family: null,
-          balances: null,
-          passport: null,
-          pendingApprovals: [],
-          isAuthenticated: false,
-        });
-      },
+      logout: () => set({ ...emptyAuthState }),
+      clearSession: () => set({ ...emptyAuthState }),
 
       refreshState: async () => {
-        const { session, family } = get();
-        if (!session || !family) return;
+        const { session } = get();
+        if (!session) return;
 
         try {
           const res = await fetch("/api/auth/session", {
@@ -125,14 +132,10 @@ export const useAuthStore = create<AuthState>()(
           });
           const data = await res.json();
           if (data.success) {
-            set({
-              balances: data.balances,
-              passport: data.passport,
-              pendingApprovals: data.pendingApprovals ?? [],
-            });
+            get().hydrateSession(data);
           }
         } catch {
-          /* silent refresh failure */
+          // silent refresh failure for demo flow
         }
       },
     }),
@@ -143,7 +146,9 @@ export const useAuthStore = create<AuthState>()(
         role: state.role,
         family: state.family,
         isAuthenticated: state.isAuthenticated,
+        needsOnboarding: state.needsOnboarding,
+        onboardingMessage: state.onboardingMessage,
       }),
-    }
-  )
+    },
+  ),
 );

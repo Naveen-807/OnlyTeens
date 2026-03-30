@@ -1,7 +1,16 @@
 "use client";
 
+import Link from "next/link";
+import { Award, Bot, CreditCard, History, PiggyBank, RefreshCw } from "lucide-react";
+
 import { useDashboardData } from "@/lib/hooks/useDashboardData";
 import { useAuthStore } from "@/store/authStore";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export default function TeenDashboard() {
   const { session, family } = useAuthStore();
@@ -17,17 +26,31 @@ export default function TeenDashboard() {
 
   if (!session || !family) {
     return (
-      <div className="max-w-md mx-auto p-6 text-center">
-        <h2 className="text-xl font-bold mb-2">Welcome to Proof18</h2>
-        <p className="text-gray-500">Please log in to continue.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="text-6xl mb-4">✨</div>
+        <h2 className="text-2xl font-semibold mb-2 text-foreground">Welcome to Proof18</h2>
+        <p className="text-muted-foreground">Please log in to continue.</p>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="max-w-md mx-auto p-6 text-center">
-        <div className="animate-pulse text-gray-400">Loading your dashboard...</div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="h-8 w-24 rounded-full" />
+        </div>
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+        </div>
+        <Skeleton className="h-32 w-full rounded-xl" />
       </div>
     );
   }
@@ -35,186 +58,202 @@ export default function TeenDashboard() {
   const progressPercent = passport?.progressToNext?.percentComplete ?? 0;
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-6">
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
-      ) : null}
+    <div className="space-y-6 max-w-2xl mx-auto">
+      {error && (
+        <Card className="border-rose-500/30 bg-rose-950/30">
+          <CardContent className="p-4">
+            <p className="text-sm text-rose-400">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold">Hey there 👋</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-foreground">Proof18 teen workspace</h1>
+          <p className="text-sm text-muted-foreground">
             {passport
-              ? `Level ${passport.level}: ${passport.levelName}`
-              : "Getting started..."}
+              ? `Level ${passport.level}: ${passport.levelName} with guardian-approved autonomy`
+              : "Loading your guided finance lane..."}
           </p>
         </div>
         {passport && (
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          <Badge className="border-primary/30 bg-primary/20 text-primary">
             🔥 {passport.weeklyStreak}wk streak
-          </span>
+          </Badge>
         )}
       </div>
 
       {/* Passport Progress */}
       {passport && (
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-4 text-white">
-          <div className="flex justify-between text-sm mb-2">
-            <span>{passport.levelName}</span>
-            <span>{passport.progressToNext.nextLevelName}</span>
-          </div>
-          <div className="w-full bg-white/30 rounded-full h-2.5">
-            <div
-              className="bg-white rounded-full h-2.5 transition-all duration-500"
-              style={{ width: `${Math.min(progressPercent, 100)}%` }}
-            />
-          </div>
-          <p className="text-xs mt-1 opacity-80">
-            {passport.progressToNext.remaining} actions to{" "}
-            {passport.progressToNext.nextLevelName}
-          </p>
-        </div>
+        <Card className="overflow-hidden bg-gradient-to-br from-primary/20 via-card to-accent/10 border-primary/20">
+          <CardContent className="p-5">
+            <div className="flex justify-between text-sm mb-3">
+              <span className="text-foreground font-medium">{passport.levelName}</span>
+              <span className="text-muted-foreground">{passport.progressToNext.nextLevelName}</span>
+            </div>
+            <Progress value={Math.min(progressPercent, 100)} className="h-2.5" />
+            <p className="text-xs mt-3 text-muted-foreground">
+              {passport.progressToNext.remaining} actions to{" "}
+              <span className="text-primary font-medium">{passport.progressToNext.nextLevelName}</span>
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Balances */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-green-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Spend</p>
-          <p className="text-lg font-bold text-green-700">
-            {balances?.spendable || "0"}{" "}
-            <span className="text-xs">FLOW</span>
-          </p>
-        </div>
-        <div className="bg-blue-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Saved</p>
-          <p className="text-lg font-bold text-blue-700">
-            {balances?.savings || "0"}{" "}
-            <span className="text-xs">FLOW</span>
-          </p>
-        </div>
-        <div className="bg-purple-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-gray-500">Subs</p>
-          <p className="text-lg font-bold text-purple-700">
-            {balances?.subscriptionReserve || "0"}{" "}
-            <span className="text-xs">FLOW</span>
-          </p>
-        </div>
+        <Card className="bg-emerald-950/40 border-emerald-500/20">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs uppercase tracking-wider text-emerald-400/70 mb-1">Spend</p>
+            <p className="text-2xl font-bold text-emerald-400">
+              {balances?.spendable || "0"}
+            </p>
+            <p className="text-xs text-emerald-400/50">FLOW</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-primary/10 border-primary/20">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs uppercase tracking-wider text-primary/70 mb-1">Saved</p>
+            <p className="text-2xl font-bold text-gold-gradient">
+              {balances?.savings || "0"}
+            </p>
+            <p className="text-xs text-primary/50">FLOW</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-violet-950/40 border-violet-500/20">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs uppercase tracking-wider text-violet-400/70 mb-1">Subs</p>
+            <p className="text-2xl font-bold text-violet-400">
+              {balances?.subscriptionReserve || "0"}
+            </p>
+            <p className="text-xs text-violet-400/50">FLOW</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-3">
         {[
-          { icon: "💰", label: "Save", href: "/teen/save" },
-          { icon: "📱", label: "Subscribe", href: "/teen/subscribe" },
-          { icon: "🤖", label: "Ask CL", href: "/teen/chat" },
-          { icon: "📋", label: "Activity", href: "/teen/activity" },
+          { icon: PiggyBank, label: "Save", href: "/teen/save", color: "text-emerald-400" },
+          { icon: CreditCard, label: "Subscribe", href: "/teen/subscribe", color: "text-violet-400" },
+          { icon: Bot, label: "Clawrence", href: "/teen/chat", color: "text-primary" },
+          { icon: History, label: "Activity", href: "/teen/activity", color: "text-muted-foreground" },
         ].map((item) => (
-          <a
+          <Link
             key={item.href}
             href={item.href}
-            className="flex flex-col items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+            className="flex flex-col items-center p-4 rounded-xl bg-card/60 border border-border/20 hover:bg-card hover:border-border/40 transition-all"
           >
-            <span className="text-2xl">{item.icon}</span>
-            <span className="text-xs mt-1">{item.label}</span>
-          </a>
+            <item.icon className={cn("h-6 w-6 mb-2", item.color)} />
+            <span className="text-xs text-muted-foreground">{item.label}</span>
+          </Link>
         ))}
       </div>
 
       {/* Pending Requests */}
       {pendingApprovals.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-600 mb-2">
-            ⏳ Pending Approval ({pendingApprovals.length})
-          </h3>
-          {pendingApprovals.map((req) => (
-            <div
-              key={req.id}
-              className="border border-yellow-200 bg-yellow-50 rounded-lg p-3 mb-2"
-            >
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">{req.description}</span>
-                <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <span className="text-amber-400">⏳</span>
+              Pending Approval ({pendingApprovals.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingApprovals.map((req) => (
+              <div
+                key={req.id}
+                className="flex justify-between items-center p-3 rounded-lg border border-amber-500/20 bg-amber-950/30"
+              >
+                <div>
+                  <span className="text-sm font-medium text-foreground">{req.description}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Waiting for guardian review
+                  </p>
+                </div>
+                <Badge className="border-amber-500/30 bg-amber-500/20 text-amber-400 text-xs">
                   {req.policyDecision}
-                </span>
+                </Badge>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Waiting for guardian review
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {/* Recent Activity */}
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-sm font-semibold text-gray-600">
-            Recent Activity
-          </h3>
-          <a
-            href="/teen/activity"
-            className="text-xs text-indigo-600 hover:underline"
-          >
-            View all →
-          </a>
-        </div>
-        {receipts.length === 0 ? (
-          <div className="text-center py-6 text-gray-400">
-            <p className="text-3xl mb-2">🌱</p>
-            <p className="text-sm">No activity yet. Start by saving!</p>
-          </div>
-        ) : (
-          receipts.slice(0, 5).map((r) => (
-            <div
-              key={r.id}
-              className="flex justify-between items-center py-2 border-b last:border-0"
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-sm">Recent Activity</CardTitle>
+            <Link
+              href="/teen/activity"
+              className="text-xs text-primary hover:text-primary/80 transition-colors"
             >
-              <div>
-                <p className="text-sm font-medium">{r.description}</p>
-                <p className="text-xs text-gray-400">
-                  {new Date(r.timestamp).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold">{r.amount} FLOW</p>
-                <div className="flex gap-1 mt-0.5">
-                  {r.flowTxHash && (
-                    <a
-                      href={r.flowExplorerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-blue-500 hover:underline"
-                    >
-                      🌊 Tx
-                    </a>
-                  )}
-                  {r.storachaCid && (
-                    <a
-                      href={r.storachaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-purple-500 hover:underline"
-                    >
-                      📦 CID
-                    </a>
-                  )}
-                </div>
-              </div>
+              View all →
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {receipts.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-3">🌱</div>
+              <p className="text-sm text-muted-foreground">No activity yet. Start by saving!</p>
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            <div className="space-y-1">
+              {receipts.slice(0, 5).map((r) => (
+                <div
+                  key={r.id}
+                  className="flex justify-between items-center py-3 border-b border-border/20 last:border-0"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{r.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(r.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gold-gradient">{r.amount} FLOW</p>
+                    <div className="flex gap-2 mt-1 justify-end">
+                      {r.flowTxHash && (
+                        <a
+                          href={r.flowExplorerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary/70 hover:text-primary transition-colors"
+                        >
+                          View Tx
+                        </a>
+                      )}
+                      {r.storachaCid && (
+                        <a
+                          href={r.storachaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-violet-400/70 hover:text-violet-400 transition-colors"
+                        >
+                          Evidence CID
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Refresh */}
-      <button
+      {/* Refresh Button */}
+      <Button
+        variant="ghost"
         onClick={refresh}
-        className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2"
+        className="w-full text-muted-foreground hover:text-foreground"
       >
-        ↻ Refresh
-      </button>
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Refresh
+      </Button>
     </div>
   );
 }

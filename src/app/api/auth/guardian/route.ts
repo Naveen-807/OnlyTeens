@@ -1,28 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getSessionSigs, mintPKPWithGoogle } from "@/lib/lit/auth";
+import { getOrCreatePhoneSession } from "@/lib/auth/phoneSession";
+import { verifyPhoneOtp } from "@/lib/auth/twilio";
 import type { UserSession } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { googleIdToken, familyId } = body;
+    const { phoneNumber, code, familyId } = body;
 
-    const pkp = await mintPKPWithGoogle(googleIdToken, "guardian");
-    const authMethod = { authMethodType: 6, accessToken: googleIdToken };
-    const sessionSigs = await getSessionSigs(pkp.publicKey, authMethod);
+    if (!phoneNumber || !code) {
+      return NextResponse.json(
+        { success: false, error: "phoneNumber and code are required" },
+        { status: 400 },
+      );
+    }
 
-    const session: UserSession = {
+    const verification = await verifyPhoneOtp(phoneNumber, code);
+    const session = await getOrCreatePhoneSession({
       role: "guardian",
-      address: pkp.ethAddress,
-      pkpPublicKey: pkp.publicKey,
-      pkpTokenId: pkp.tokenId,
-      familyId,
-      sessionSigs,
+      phoneNumber: verification.to,
+      verificationSid: verification.sid,
+    });
+
+    const authMethod = {
+      ...session.authMethod,
+      familyId: familyId || session.familyId || "",
+      verificationStatus: verification.status,
+    };
+
+    const responseSession: UserSession = {
+      ...session,
+      familyId: familyId || session.familyId || "",
       authMethod,
     };
 
-    return NextResponse.json({ success: true, session });
+    return NextResponse.json({ success: true, session: responseSession });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message },
@@ -30,4 +43,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

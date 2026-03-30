@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
       pkpAddress: body.pkpAddress,
       authMethod: body.authMethod,
       address: body.address,
+      authChannel: body.authChannel,
       phoneNumber: body.phoneNumber,
+      verificationId: body.verificationId,
     });
 
     return NextResponse.json({ success: true, ...result });

@@ -4,7 +4,14 @@ import { getFamilyByGuardian, getFamilyByTeen } from "@/lib/onboarding/familySer
 import { getBalances } from "@/lib/flow/vault";
 import { getPassport } from "@/lib/flow/passport";
 import { getPendingRequestsByFamily } from "@/lib/approvals/durableApprovals";
-import type { UserSession, Role, TeenBalances, PassportState, ApprovalRequest } from "@/lib/types";
+import type {
+  UserSession,
+  Role,
+  TeenBalances,
+  PassportState,
+  ApprovalRequest,
+  AuthChannel,
+} from "@/lib/types";
 
 export interface BootstrapResult {
   session: UserSession;
@@ -23,7 +30,9 @@ export async function bootstrapSession(params: {
   pkpAddress?: string;
   authMethod: any;
   address: string;
+  authChannel?: AuthChannel;
   phoneNumber?: string;
+  verificationId?: string;
 }): Promise<BootstrapResult> {
   // Step 1: Find family record
   const family =
@@ -42,6 +51,8 @@ export async function bootstrapSession(params: {
     phoneNumber: params.phoneNumber || params.authMethod?.phoneNumber || params.authMethod?.metadata?.phoneNumber,
     sessionSigs: params.authMethod?.sessionSigs || null,
     authMethod: params.authMethod,
+    authChannel: params.authChannel,
+    verificationId: params.verificationId,
   };
 
   if (!family) {

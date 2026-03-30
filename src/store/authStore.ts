@@ -8,6 +8,7 @@ import type {
   TeenBalances,
   PassportState,
   ApprovalRequest,
+  AuthChannel,
 } from "@/lib/types";
 
 interface AuthState {
@@ -32,8 +33,17 @@ interface AuthState {
     phoneNumber?: string;
     authMethod: any;
     address: string;
+    authChannel?: AuthChannel;
+    verificationId?: string;
   }) => Promise<void>;
   setSession: (session: UserSession) => void;
+  hydrateBootstrap: (data: {
+    session: UserSession;
+    family: any | null;
+    balances: TeenBalances | null;
+    passport: PassportState | null;
+    pendingApprovals: ApprovalRequest[];
+  }) => void;
   logout: () => void;
   clearSession: () => void;
   setLoading: (loading: boolean) => void;
@@ -54,6 +64,17 @@ export const useAuthStore = create<AuthState>()(
 
       setSession: (session) =>
         set({ session, role: session.role, isAuthenticated: true }),
+
+      hydrateBootstrap: (data) =>
+        set({
+          session: data.session,
+          role: data.session.role,
+          family: data.family,
+          balances: data.balances,
+          passport: data.passport,
+          pendingApprovals: data.pendingApprovals ?? [],
+          isAuthenticated: true,
+        }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
@@ -113,30 +134,36 @@ export const useAuthStore = create<AuthState>()(
         const { session, family } = get();
         if (!session || !family) return;
 
-        const res = await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: session.role,
-            pkpPublicKey: session.pkpPublicKey,
-            pkpTokenId: session.pkpTokenId,
-            pkpAddress: session.pkpAddress,
-            phoneNumber: session.phoneNumber,
-            authMethod: session.authMethod,
-            address: session.address,
-          }),
-        });
-        const data = await res.json();
+        try {
+          const res = await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role: session.role,
+              pkpPublicKey: session.pkpPublicKey,
+              pkpTokenId: session.pkpTokenId,
+              pkpAddress: session.pkpAddress,
+              authMethod: session.authMethod,
+              address: session.address,
+              authChannel: session.authChannel,
+              phoneNumber: session.phoneNumber,
+              verificationId: session.verificationId,
+            }),
+          });
+          const data = await res.json();
 
-        if (!data.success) {
-          throw new Error(data.error || "Failed to refresh Proof18 session");
+          if (!data.success) {
+            throw new Error(data.error || "Failed to refresh Proof18 session");
+          }
+
+          set({
+            balances: data.balances,
+            passport: data.passport,
+            pendingApprovals: data.pendingApprovals ?? [],
+          });
+        } catch {
+          /* silent refresh failure */
         }
-
-        set({
-          balances: data.balances,
-          passport: data.passport,
-          pendingApprovals: data.pendingApprovals ?? [],
-        });
       },
     }),
     {

@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       ...session,
       familyId: familyId || session.familyId || "",
       authMethod,
+      authChannel: "google",
     };
 
     return NextResponse.json({ success: true, session: responseSession });

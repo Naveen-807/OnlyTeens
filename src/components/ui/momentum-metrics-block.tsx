@@ -82,7 +82,7 @@ export function MomentumMetricsBlock({
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">evidence</p>
             <p className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
               <Coins className="h-4 w-4 text-primary" />
-              Filecoin-ready trail
+              Auditable execution trail
             </p>
           </div>
         </motion.div>

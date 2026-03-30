@@ -14,6 +14,8 @@ too locked (no teen autonomy). Proof18 bridges this gap with
 ## 🏗 Architecture
 
 - Full spec: `PROOF18_COMPLETE_PROJECT_LOGIC_DOCUMENT.md`
+- Obsidian skill bundle: `plugins/obsidian-skills/README.md`
+- Obsidian notes: `obsidian-notes/00 - Proof18 Index.md`
 
 ## ⚙️ Setup (Strict Demo Mode)
 
@@ -31,10 +33,19 @@ This runs `npm ci` + strict preflight checks (RPC reachability, non-zero contrac
 ## ✅ Verification Commands
 
 ```bash
+npm run verify
 npm run hardhat:test
 npm run build
 npm run preflight
 ```
+
+`npm run verify` now runs the full local health gate: Hardhat tests, TypeScript typecheck, and Next.js build. `npm run preflight` is the stricter environment check for contract addresses, RPC reachability, Lit CID resolution, Storacha credentials, and Zama evaluator configuration.
+
+## Demo Persistence
+
+- `data/approvals.json`, `data/receipts.json`, and `data/families.json` are demo-only persistence layers so the hackathon flow survives process restarts.
+- They are not production databases and should be replaced if this moves beyond the submission environment.
+- Strict mode should still require real Flow, Lit, Zama, and Storacha configuration before the app will execute transactions.
 
 ## 🧪 Core Demo Flows (No Mock in Strict Mode)
 

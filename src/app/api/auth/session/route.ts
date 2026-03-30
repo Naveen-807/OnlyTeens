@@ -9,8 +9,10 @@ export async function POST(req: NextRequest) {
       role: body.role,
       pkpPublicKey: body.pkpPublicKey,
       pkpTokenId: body.pkpTokenId,
+      pkpAddress: body.pkpAddress,
       authMethod: body.authMethod,
       address: body.address,
+      phoneNumber: body.phoneNumber,
     });
 
     return NextResponse.json({ success: true, ...result });

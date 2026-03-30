@@ -20,8 +20,10 @@ export async function bootstrapSession(params: {
   role: Role;
   pkpPublicKey: string;
   pkpTokenId: string;
+  pkpAddress?: string;
   authMethod: any;
   address: string;
+  phoneNumber?: string;
 }): Promise<BootstrapResult> {
   // Step 1: Find family record
   const family =
@@ -35,7 +37,9 @@ export async function bootstrapSession(params: {
     address: params.address,
     pkpPublicKey: params.pkpPublicKey,
     pkpTokenId: params.pkpTokenId,
+    pkpAddress: params.pkpAddress,
     familyId: family?.familyId || "",
+    phoneNumber: params.phoneNumber || params.authMethod?.phoneNumber || params.authMethod?.metadata?.phoneNumber,
     sessionSigs: params.authMethod?.sessionSigs || null,
     authMethod: params.authMethod,
   };

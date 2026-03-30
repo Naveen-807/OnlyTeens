@@ -512,7 +512,7 @@ function ParentHistoryAuditScreen() {
   const { history } = useProof18Store();
   return (
     <div className="space-y-4">
-      <TopNavigation title="History / Audit" subtitle="approvals, denials, receipts, policy outcomes, Filecoin references" />
+      <TopNavigation title="History / Audit" subtitle="approvals, denials, execution receipts, and policy outcomes" />
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-3">
           {history.map((item) => (
@@ -521,7 +521,7 @@ function ParentHistoryAuditScreen() {
         </div>
         <div className="space-y-4">
           <EvidenceReferenceSurface reference="fil://bafy...guardian-approved" />
-          <ExplanationCard title="Filecoin-backed evidence reference" body="Every important action includes a durable reference for later review or demo storytelling." />
+          <ExplanationCard title="Evidence reference" body="Every important action includes a durable reference for later review, demo storytelling, and guardian audit." />
         </div>
       </div>
     </div>

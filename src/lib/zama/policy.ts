@@ -31,12 +31,19 @@ function getEvaluatorAccount() {
 }
 
 function getPolicyViewerAccount() {
+  const envName = process.env.DEPLOYER_PRIVATE_KEY
+    ? "DEPLOYER_PRIVATE_KEY"
+    : process.env.ZAMA_EVALUATOR_PRIVATE_KEY
+      ? "ZAMA_EVALUATOR_PRIVATE_KEY"
+      : process.env.ZAMA_PRIVATE_KEY
+        ? "ZAMA_PRIVATE_KEY"
+        : "";
   const key =
     process.env.DEPLOYER_PRIVATE_KEY ||
     process.env.ZAMA_EVALUATOR_PRIVATE_KEY ||
     process.env.ZAMA_PRIVATE_KEY;
   if (!key) return null;
-  return privateKeyToAccount(key as `0x${string}`);
+  return privateKeyToAccount(normalizePrivateKeyEnv(envName, key));
 }
 
 function getSepoliaWalletClient() {

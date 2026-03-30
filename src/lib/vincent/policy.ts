@@ -170,10 +170,13 @@ export async function evaluateVincentGuardrailsAsync(params: {
         return {
           ...localResult,
           approved: false,
+          provider: "vincent-api",
           reasons: [
             ...localResult.reasons,
             `Vincent AI: ${apiResult.data.reasoning}`,
           ],
+          aiDecision,
+          aiReasoning: apiResult.data.reasoning,
           aiLayer: {
             decision: aiDecision,
             reasoning: apiResult.data.reasoning,
@@ -184,6 +187,9 @@ export async function evaluateVincentGuardrailsAsync(params: {
       // ALLOW or REVIEW - add AI layer info but keep approved
       return {
         ...localResult,
+        provider: "vincent-api",
+        aiDecision,
+        aiReasoning: apiResult.data.reasoning,
         aiLayer: {
           decision: aiDecision,
           reasoning: apiResult.data.reasoning,

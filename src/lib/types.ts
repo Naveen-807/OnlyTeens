@@ -45,7 +45,6 @@ export interface UserSession {
   sessionSigs: any;
   authMethod: any;
   authChannel?: AuthChannel;
-  phoneNumber?: string;
   verificationId?: string;
 }
 
@@ -217,7 +216,7 @@ export interface FlowResult {
 
 export interface GuardrailResult {
   approved: boolean;
-  provider: "vincent-local";
+  provider: "vincent-local" | "vincent-api";
   version: string;
   chain: string;
   action: ActionType;
@@ -230,6 +229,8 @@ export interface GuardrailResult {
     maxSingleTransfer: boolean;
     recurringWithinLimit: boolean;
   };
+  aiDecision?: GuardrailDecision;
+  aiReasoning?: string;
 }
 
 export interface PermissionsProofState {

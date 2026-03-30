@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2, Phone, Send } from "lucide-react";
 
 import type { Role, UserSession } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type Props = {
   role: Role;
@@ -28,26 +34,38 @@ export function PhoneOtpAuthCard({
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [verificationSid, setVerificationSid] = useState<string | null>(null);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [verifiedSession, setVerifiedSession] = useState<UserSession | null>(null);
+  const [statusType, setStatusType] = useState<"success" | "error" | "info">("info");
 
   const sendCode = async () => {
     setSending(true);
     setStatus(null);
     try {
-      const res = await fetch("/api/auth/send-otp", {
+      const res = await fetch("/api/auth/phone/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: phoneNumber.trim() }),
+        body: JSON.stringify({
+          phoneNumber: phoneNumber.trim(),
+          role,
+          familyId: familyId?.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!data.success) {
         throw new Error(data.error || "Failed to send OTP");
       }
-      setVerificationSid(data.verification?.sid || null);
-      setStatus(`OTP sent to ${data.verification?.to || phoneNumber.trim()}.`);
-    } catch (error: any) {
-      setStatus(error?.message || "Failed to send OTP");
+      setChallengeId(data.challengeId || null);
+      setMaskedPhone(data.maskedPhone || phoneNumber.trim());
+      setDemoCode(data.demoCode || null);
+      setStatus(`OTP sent to ${data.maskedPhone || phoneNumber.trim()}.`);
+      setStatusType("info");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send OTP";
+      setStatus(errorMessage);
+      setStatusType("error");
     } finally {
       setSending(false);
     }
@@ -57,13 +75,12 @@ export function PhoneOtpAuthCard({
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch(`/api/auth/${role}`, {
+      const res = await fetch("/api/auth/phone/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phoneNumber: phoneNumber.trim(),
+          challengeId,
           code: code.trim(),
-          familyId: familyId?.trim() || "",
         }),
       });
       const data = await res.json();
@@ -79,108 +96,146 @@ export function PhoneOtpAuthCard({
           ? `Connected as ${role}. Session bootstrapped for family ${data.session.familyId}.`
           : `Connected as ${role}. Phone verified successfully.`,
       );
+      setStatusType("success");
       setCode("");
-    } catch (error: any) {
-      setStatus(error?.message || `Failed to connect as ${role}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to connect as ${role}`;
+      setStatus(errorMessage);
+      setStatusType("error");
     } finally {
       setLoading(false);
     }
   };
 
-  const canVerify = phoneNumber.trim() && code.trim();
+  const canVerify = challengeId && phoneNumber.trim() && code.trim().length === 6;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
-          Real session
-        </p>
-        <h3 className="mt-1 text-base font-semibold text-gray-900">
+    <Card className="w-full max-w-md bg-card/90 border-border/30 backdrop-blur-sm">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="rounded-lg bg-primary/20 p-2">
+            <Phone className="h-5 w-5 text-primary" />
+          </div>
+          <Badge className="capitalize">{role}</Badge>
+        </div>
+        <CardTitle className="text-xl">
           {title || `Connect as ${role}`}
-        </h3>
-        <p className="mt-1 text-sm text-gray-600">
+        </CardTitle>
+        <CardDescription>
           {subtitle ||
-            "Verify a phone number with a real OTP, then bootstrap the Lit-backed session."}
-        </p>
-      </div>
+            "Verify a phone number with a real OTP, then bootstrap the Proof18 session and delegated execution surface."}
+        </CardDescription>
+      </CardHeader>
 
-      <div className="space-y-3">
-        <label className="block space-y-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+      <CardContent className="space-y-4">
+        {/* Phone Number Input */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Phone number
-          </span>
+          </label>
           <div className="flex gap-2">
-            <input
+            <Input
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+              className="flex-1 bg-background/50"
               placeholder="+14155552671"
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={sendCode}
               disabled={sending || !phoneNumber.trim()}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {sending ? "Sending..." : "Send code"}
-            </button>
+              {sending ? "Sending..." : <><Send className="h-4 w-4 mr-1" /> Send</>}
+            </Button>
           </div>
-        </label>
+        </div>
 
-        <label className="block space-y-1">
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        {/* OTP Code Input */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             OTP code
-          </span>
-          <input
+          </label>
+          <Input
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            className="bg-background/50 text-center text-lg tracking-[0.3em]"
             placeholder="123456"
+            maxLength={6}
+            inputMode="numeric"
           />
-          <p className="text-xs text-gray-500">
-            {verificationSid
-              ? `Verification active${familyId ? ` for family ${familyId}` : ""}.`
+          <p className="text-xs text-muted-foreground">
+            {challengeId
+              ? `Verification active${maskedPhone ? ` for ${maskedPhone}` : ""}${familyId ? ` in family ${familyId.slice(0, 10)}...` : ""}.`
               : "Send a code first, then enter the SMS OTP here."}
           </p>
-        </label>
+          {demoCode ? (
+            <p className="text-xs text-primary">
+              Demo OTP: <span className="font-mono">{demoCode}</span>
+            </p>
+          ) : null}
+        </div>
 
-        <button
+        {/* Verify Button */}
+        <Button
           type="button"
           onClick={verifyCode}
           disabled={loading || !canVerify}
-          className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full"
         >
           {loading
             ? "Verifying..."
             : submitLabel || actionLabel || `Verify ${role} login`}
-        </button>
+        </Button>
 
-        {status ? (
-          <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+        {/* Status Message */}
+        {status && (
+          <div className={cn(
+            "rounded-lg p-3 text-sm",
+            statusType === "success"
+              ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/30"
+              : statusType === "info"
+                ? "bg-primary/10 text-primary border border-primary/30"
+                : "bg-rose-950/40 text-rose-400 border border-rose-500/30"
+          )}>
             {status}
           </div>
-        ) : null}
+        )}
 
-        {verifiedSession ? (
-          <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-950">
-            <div className="font-semibold uppercase tracking-[0.18em] text-emerald-700">
-              Wallet mapping
+        {/* Verified Session Info */}
+        {verifiedSession && (
+          <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-4">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                Session Mapping
+              </span>
             </div>
-            <div>
-              Verified phone: <span className="font-mono">{verifiedSession.phoneNumber}</span>
-            </div>
-            <div>
-              Flow wallet: <span className="font-mono">{verifiedSession.address}</span>
-            </div>
-            {verifiedSession.pkpAddress ? (
-              <div>
-                Hidden PKP executor:{" "}
-                <span className="font-mono">{verifiedSession.pkpAddress}</span>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Phone</span>
+                <span className="font-mono text-foreground">{verifiedSession.phoneNumber}</span>
               </div>
-            ) : null}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Flow Wallet</span>
+                <span className="font-mono text-foreground truncate max-w-[180px]">
+                  {verifiedSession.address}
+                </span>
+              </div>
+              {verifiedSession.pkpAddress && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Executor Wallet</span>
+                  <span className="font-mono text-foreground truncate max-w-[180px]">
+                    {verifiedSession.pkpAddress}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        ) : null}
-      </div>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

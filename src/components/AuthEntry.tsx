@@ -11,7 +11,7 @@ export function AuthEntry({ role }: { role: Role }) {
     <PhoneOtpAuthCard
       role={role}
       title={`Connect as ${role}`}
-      subtitle="Verify your phone with SMS OTP, then mint a real Lit-backed session."
+      subtitle="Verify your phone with SMS OTP, then enter the Proof18 session with delegated execution ready."
       submitLabel={`Verify ${role} login`}
       onSession={async (session) => {
         await login({

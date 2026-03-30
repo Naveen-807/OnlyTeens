@@ -2,8 +2,10 @@ import { AuthOnboardingFlow } from "@/components/auth/AuthOnboardingFlow";
 
 export default function AuthPage() {
   return (
-    <main className="grain mx-auto min-h-screen max-w-7xl px-4 py-8 lg:px-8">
+    <main className="grain min-h-screen px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
       <AuthOnboardingFlow />
+      </div>
     </main>
   );
 }

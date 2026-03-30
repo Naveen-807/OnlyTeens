@@ -8,7 +8,7 @@ import { preActionExplanation, postDecisionExplanation, celebrationMessage } fro
 import { executeSafeSigning } from "@/lib/lit/executor";
 import { getClawrenceAccount } from "@/lib/lit/executorSession";
 import { evaluateAction } from "@/lib/zama/policy";
-import { evaluateVincentGuardrails } from "@/lib/vincent/policy";
+import { evaluateVincentGuardrailsAsync } from "@/lib/vincent/policy";
 import {
   buildSavingsReceipt,
   storePassportSnapshot,
@@ -71,11 +71,15 @@ export async function executeSavingsFlow(params: {
       passportLevel: passportBefore.level,
     });
 
-    const guardrails = evaluateVincentGuardrails({
+    const guardrails = await evaluateVincentGuardrailsAsync({
       action: "savings",
       amount: params.amount,
       isRecurring: params.isRecurring,
+      description: `Teen savings request for ${params.amount} FLOW${params.isRecurring ? ` on a ${params.interval} cadence` : ""}`,
       recipientAddress: CONTRACTS.vault,
+      familyContext: {
+        passportLevel: passportBefore.level,
+      },
     });
 
     if (!guardrails.approved) {
@@ -103,6 +107,7 @@ export async function executeSavingsFlow(params: {
       txData: new Uint8Array([]),
       clawrencePublicKey: clawrenceSession.pkpPublicKey || params.clawrencePublicKey,
       session: params.session,
+      vincentGuardrailsPassed: guardrails.approved,
     });
 
     if (!litResult.signed) {

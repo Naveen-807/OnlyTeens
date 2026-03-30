@@ -8,7 +8,7 @@ import { preActionExplanation, postDecisionExplanation, guardianExplanation, cel
 import { executeSafeSigning } from "@/lib/lit/executor";
 import { getClawrenceAccount } from "@/lib/lit/executorSession";
 import { evaluateAction } from "@/lib/zama/policy";
-import { evaluateVincentGuardrails } from "@/lib/vincent/policy";
+import { evaluateVincentGuardrailsAsync } from "@/lib/vincent/policy";
 import { uploadJSON } from "@/lib/storacha/client";
 import {
   buildSubscriptionReceipt,
@@ -200,11 +200,15 @@ export async function executeApprovedSubscription(params: {
       (process.env.SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}` | undefined) ||
       ("0x0000000000000000000000000000000000000000" as `0x${string}`);
 
-    const guardrails = evaluateVincentGuardrails({
+    const guardrails = await evaluateVincentGuardrailsAsync({
       action: "subscription",
       amount: params.monthlyAmount,
       isRecurring: true,
+      description: `${params.serviceName} subscription for ${params.monthlyAmount} FLOW per month`,
       recipientAddress: subscriptionRecipient,
+      familyContext: {
+        passportLevel: params.passportBefore.level,
+      },
     });
 
     if (!guardrails.approved) {
@@ -229,10 +233,10 @@ export async function executeApprovedSubscription(params: {
       amount: params.monthlyAmount,
       familyId: params.familyId,
       txData: new Uint8Array([]),
-      clawrencePublicKey: params.clawrencePublicKey,
       session: params.session,
       clawrencePublicKey:
         clawrenceSession.pkpPublicKey || params.clawrencePublicKey,
+      vincentGuardrailsPassed: guardrails.approved,
     });
 
     if (!litResult.signed) {
@@ -268,7 +272,6 @@ export async function executeApprovedSubscription(params: {
         "MISSING_CONFIG:SUBSCRIPTION_RECIPIENT_ADDRESS is required in strict demo mode",
       );
     }
-    await createSubscriptionSchedule(
     const flowTx = await fundSubscription(
       clawrenceAccount,
       params.familyId,

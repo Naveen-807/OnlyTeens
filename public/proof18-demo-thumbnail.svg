@@ -1,0 +1,29 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#090807"/>
+  <rect x="24" y="24" width="1232" height="672" rx="28" fill="url(#bg)" stroke="url(#edge)" stroke-width="2"/>
+  <text x="84" y="160" fill="#D9BF80" font-family="Arial, Helvetica, sans-serif" font-size="24" letter-spacing="6">PL GENESIS SUBMISSION</text>
+  <text x="84" y="258" fill="#F8EDCC" font-family="Georgia, 'Times New Roman', serif" font-size="108" font-weight="700" letter-spacing="-4">Proof18</text>
+  <text x="86" y="332" fill="#C9B792" font-family="Arial, Helvetica, sans-serif" font-size="34" letter-spacing="2.5">PRIVATE POLICY • CONTROLLED AUTONOMY • GUARDIAN-DELEGATED AI EXECUTION</text>
+  <rect x="86" y="402" width="334" height="168" rx="24" fill="#11100E" stroke="#3A3228"/>
+  <text x="116" y="452" fill="#A59B85" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="2">EXECUTION RAIL</text>
+  <text x="116" y="500" fill="#F2DFC1" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="700">Flow Testnet</text>
+  <text x="116" y="538" fill="#D0C6B6" font-family="Arial, Helvetica, sans-serif" font-size="22">Savings and recurring subscriptions</text>
+  <rect x="474" y="402" width="334" height="168" rx="24" fill="#11100E" stroke="#3A3228"/>
+  <text x="504" y="452" fill="#A59B85" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="2">PRIVATE POLICY</text>
+  <text x="504" y="500" fill="#F2DFC1" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="700">Zama on Sepolia</text>
+  <text x="504" y="538" fill="#D0C6B6" font-family="Arial, Helvetica, sans-serif" font-size="22">Encrypted household rule engine</text>
+  <rect x="862" y="402" width="334" height="168" rx="24" fill="#11100E" stroke="#3A3228"/>
+  <text x="892" y="452" fill="#A59B85" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="2">BOUNDED AUTHORITY</text>
+  <text x="892" y="500" fill="#F2DFC1" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="700">Vincent / Lit</text>
+  <text x="892" y="538" fill="#D0C6B6" font-family="Arial, Helvetica, sans-serif" font-size="22">Scoped and revocable agent execution</text>
+  <defs>
+    <linearGradient id="bg" x1="87" y1="40" x2="1182" y2="666" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17120D"/>
+      <stop offset="1" stop-color="#0A0908"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="42" y1="30" x2="1200" y2="694" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E2C37B"/>
+      <stop offset="1" stop-color="#7E663B"/>
+    </linearGradient>
+  </defs>
+</svg>

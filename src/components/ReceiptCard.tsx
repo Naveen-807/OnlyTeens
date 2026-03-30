@@ -27,7 +27,7 @@ export function ReceiptCard({ receipt }: { receipt: Proof18Receipt }) {
             target="_blank"
             rel="noreferrer"
           >
-            Storacha →
+            Evidence →
           </a>
         ) : null}
       </div>
@@ -35,4 +35,3 @@ export function ReceiptCard({ receipt }: { receipt: Proof18Receipt }) {
     </div>
   );
 }
-

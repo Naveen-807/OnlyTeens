@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Shield, Lock, Zap, ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -15,17 +16,17 @@ function getDecisionBadgeColor(decision?: string) {
   switch (decision) {
     case "GREEN":
     case "ALLOW":
-      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+      return "border-emerald-500/30 bg-emerald-950/60 text-emerald-400";
     case "YELLOW":
     case "REVIEW":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "border-amber-500/30 bg-amber-950/60 text-amber-400";
     case "RED":
-      return "border-orange-200 bg-orange-50 text-orange-800";
+      return "border-orange-500/30 bg-orange-950/60 text-orange-400";
     case "BLOCKED":
     case "BLOCK":
-      return "border-red-200 bg-red-50 text-red-800";
+      return "border-rose-500/30 bg-rose-950/60 text-rose-400";
     default:
-      return "border-gray-200 bg-gray-50 text-gray-600";
+      return "border-slate-500/30 bg-slate-950/60 text-slate-400";
   }
 }
 
@@ -47,137 +48,132 @@ export function PermissionsProof({
   className?: string;
 }) {
   return (
-    <Card className={cn("overflow-hidden p-5", className)}>
+    <Card className={cn("overflow-hidden p-5 sm:p-6", className)}>
       <div className="flex flex-col gap-5">
         <div>
-          <Badge className="border-primary/20 bg-primary/10 text-primary">
-            Permissions proof
-          </Badge>
-          <h3 className="mt-3 text-lg font-semibold text-foreground">
-            Three-Layer Safety Model
+          <Badge>Delegated execution proof</Badge>
+          <h3 className="font-display mt-4 text-3xl leading-none tracking-[-0.04em] text-foreground">
+            Private policy before money moves
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every action must pass through three independent safety layers before execution.
-            All three must agree before money moves.
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Proof18 only executes after confidential policy, delegated authorization,
+            and bounded signing all line up. The guardian sets authority. Clawrence
+            operates inside the granted scope.
           </p>
         </div>
 
-        {/* Three-Layer Safety Model */}
-        <div className="rounded-[1.2rem] border-2 border-primary/30 bg-gradient-to-b from-primary/5 to-transparent p-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-primary font-medium">
+        <div className="rounded-[1.6rem] border border-primary/25 bg-[linear-gradient(180deg,oklch(0.13_0.012_85),oklch(0.08_0.006_85))] p-4 sm:p-5">
+          <p className="flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-primary/80">
+            <Shield className="h-3.5 w-3.5" />
             Safety Layers
           </p>
           <div className="mt-4 flex flex-col gap-3">
-            {/* Layer 1: Zama */}
-            <div className="flex items-center gap-3 rounded-lg bg-purple-50/80 p-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-700 font-bold text-sm">
+            <div className="flex items-center gap-3 rounded-[1.2rem] border border-violet-500/25 bg-violet-950/30 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/14 text-violet-300 font-bold">
                 1
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-purple-900">Zama FHE Policy</span>
+                  <span className="font-medium text-violet-200">Zama FHE Policy</span>
                   <Badge className={cn("text-xs", getDecisionBadgeColor(proof?.zamaDecision))}>
                     {proof?.zamaDecision || "PENDING"}
                   </Badge>
                 </div>
-                <p className="text-xs text-purple-700 mt-0.5">
+                <p className="mt-0.5 text-xs text-violet-200/65">
                   Encrypted policy decides if action is within family rules
                 </p>
               </div>
             </div>
 
-            {/* Layer 2: Vincent */}
-            <div className="flex items-center gap-3 rounded-lg bg-orange-50/80 p-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-700 font-bold text-sm">
+            <div className="flex items-center gap-3 rounded-[1.2rem] border border-amber-500/25 bg-amber-950/25 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/20 bg-amber-500/14 text-amber-300 font-bold">
                 2
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-orange-900">Vincent Guardrails</span>
+                  <span className="font-medium text-amber-100">Vincent Guardrails</span>
                   <Badge className={cn("text-xs", getDecisionBadgeColor(proof?.guardrailDecision))}>
                     {proof?.guardrailDecision || "PENDING"}
                   </Badge>
                 </div>
-                <p className="text-xs text-orange-700 mt-0.5">
-                  AI guardrails limit what Clawrence wallet can do
+                <p className="mt-0.5 text-xs text-amber-100/65">
+                  Guardian-delegated authority stays scoped, revocable, and auditable
                 </p>
               </div>
             </div>
 
-            {/* Layer 3: Lit */}
-            <div className="flex items-center gap-3 rounded-lg bg-blue-50/80 p-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
+            <div className="flex items-center gap-3 rounded-[1.2rem] border border-blue-500/25 bg-blue-950/25 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-400/20 bg-blue-500/14 text-blue-300 font-bold">
                 3
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-blue-900">Lit Protocol Signing</span>
+                  <span className="font-medium text-blue-100">Lit Execution Boundary</span>
                   <Badge className={cn(
                     "text-xs",
                     proof?.litAuthorized
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-gray-200 bg-gray-50 text-gray-600"
+                      ? "border-emerald-500/30 bg-emerald-950/60 text-emerald-400"
+                      : "border-slate-500/30 bg-slate-950/60 text-slate-400"
                   )}>
                     {proof?.litAuthorized ? "AUTHORIZED" : "PENDING"}
                   </Badge>
                 </div>
-                <p className="text-xs text-blue-700 mt-0.5">
-                  Immutable Lit Action on IPFS controls PKP signing
+                <p className="mt-0.5 text-xs text-blue-100/65">
+                  Immutable signing policy controls when the delegated executor can act
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* PKP Role Separation */}
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">
-            PKP Role Separation (Lit Protocol)
+          <p className="mb-3 flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            <Lock className="h-3.5 w-3.5" />
+            Delegated role separation
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.2rem] border-2 border-green-300 bg-green-50/50 p-3">
+            <div className="rounded-[1.2rem] border border-emerald-500/25 bg-emerald-950/24 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-green-700 font-medium">
-                  Guardian PKP
+                <p className="text-xs uppercase tracking-wider text-emerald-200 font-medium">
+                  Guardian authority
                 </p>
-                <Badge className="border-green-300 bg-green-100 text-green-800 text-[10px]">
+                <Badge className="border-emerald-500/30 bg-emerald-950/60 text-emerald-400 text-[10px]">
                   SignAnything
                 </Badge>
               </div>
-              <p className="mt-2 font-mono text-xs">{shorten(guardianPkpAddress)}</p>
-              <p className="mt-1 text-[10px] text-green-600">Full signing authority</p>
+              <p className="mt-2 font-mono text-xs text-emerald-100/80">{shorten(guardianPkpAddress)}</p>
+              <p className="mt-1 text-[10px] text-emerald-100/58">Full signing authority</p>
             </div>
-            <div className="rounded-[1.2rem] border-2 border-blue-300 bg-blue-50/50 p-3">
+            <div className="rounded-[1.2rem] border border-blue-500/25 bg-blue-950/24 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-blue-700 font-medium">
-                  Teen PKP
+                <p className="text-xs uppercase tracking-wider text-blue-100 font-medium">
+                  Teen session
                 </p>
-                <Badge className="border-blue-300 bg-blue-100 text-blue-800 text-[10px]">
+                <Badge className="border-blue-500/30 bg-blue-950/60 text-blue-400 text-[10px]">
                   PersonalSign
                 </Badge>
               </div>
-              <p className="mt-2 font-mono text-xs">{shorten(teenPkpAddress)}</p>
-              <p className="mt-1 text-[10px] text-blue-600">Limited to messages</p>
+              <p className="mt-2 font-mono text-xs text-blue-100/80">{shorten(teenPkpAddress)}</p>
+              <p className="mt-1 text-[10px] text-blue-100/58">Limited to messages</p>
             </div>
-            <div className="rounded-[1.2rem] border-2 border-purple-300 bg-purple-50/50 p-3">
+            <div className="rounded-[1.2rem] border border-violet-500/25 bg-violet-950/24 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-purple-700 font-medium">
-                  Clawrence PKP
+                <p className="text-xs uppercase tracking-wider text-violet-100 font-medium">
+                  Clawrence executor
                 </p>
-                <Badge className="border-purple-300 bg-purple-100 text-purple-800 text-[10px]">
+                <Badge className="border-violet-500/30 bg-violet-950/60 text-violet-400 text-[10px]">
                   Lit Action
                 </Badge>
               </div>
-              <p className="mt-2 font-mono text-xs">{shorten(clawrencePkpAddress)}</p>
-              <p className="mt-1 text-[10px] text-purple-600">Bound to CID: {shorten(safeExecutorCid)}</p>
+              <p className="mt-2 font-mono text-xs text-violet-100/80">{shorten(clawrencePkpAddress)}</p>
+              <p className="mt-1 text-[10px] text-violet-100/58">Bound to CID: {shorten(safeExecutorCid)}</p>
             </div>
           </div>
         </div>
 
-        {/* Evidence Links */}
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-[1.2rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Zama evaluation tx
             </p>
             {proof?.evaluationTxHash ? (
@@ -188,8 +184,8 @@ export function PermissionsProof({
               <p className="mt-2 text-sm text-muted-foreground">No evaluation yet.</p>
             )}
           </div>
-          <div className="rounded-[1.2rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Flow execution
             </p>
             {proof?.flowTxHash ? (
@@ -198,9 +194,10 @@ export function PermissionsProof({
                   href={proof.flowExplorerUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 inline-block font-mono text-sm text-primary hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 font-mono text-sm text-primary hover:underline"
                 >
                   {shorten(proof.flowTxHash)}
+                  <ExternalLink className="h-3 w-3" />
                 </Link>
               ) : (
                 <p className="mt-2 font-mono text-sm text-foreground">
@@ -211,9 +208,9 @@ export function PermissionsProof({
               <p className="mt-2 text-sm text-muted-foreground">No transaction yet.</p>
             )}
           </div>
-          <div className="rounded-[1.2rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Storacha evidence
+          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Evidence CID
             </p>
             {proof?.storachaCid ? (
               proof.storachaUrl ? (
@@ -221,9 +218,10 @@ export function PermissionsProof({
                   href={proof.storachaUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 inline-block font-mono text-sm text-primary hover:underline"
+                  className="mt-2 inline-flex items-center gap-1 font-mono text-sm text-primary hover:underline"
                 >
                   {shorten(proof.storachaCid)}
+                  <ExternalLink className="h-3 w-3" />
                 </Link>
               ) : (
                 <p className="mt-2 font-mono text-sm text-foreground">
@@ -231,25 +229,26 @@ export function PermissionsProof({
                 </p>
               )
             ) : (
-              <p className="mt-2 text-sm text-muted-foreground">Waiting to store receipt.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Appendix evidence appears here after execution.</p>
             )}
           </div>
         </div>
 
-        {permittedScopes.length > 0 ? (
-          <div className="rounded-[1.2rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        {permittedScopes.length > 0 && (
+          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+              <Zap className="h-3.5 w-3.5" />
               Permitted scopes
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {permittedScopes.map((scope) => (
-                <Badge key={scope} className="border-primary/20 bg-primary/10 text-primary">
+                <Badge key={scope} className="border-primary/30 bg-primary/10 text-primary">
                   {scope}
                 </Badge>
               ))}
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </Card>
   );

@@ -1,6 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Shield, Lock, CheckCircle2, AlertTriangle } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 
 export function GuardianPolicySetup({
   onSubmit,
@@ -40,136 +47,182 @@ export function GuardianPolicySetup({
 
   if (submitted) {
     return (
-      <div className="mx-auto max-w-md p-6 text-center">
-        <span className="text-5xl">🔒</span>
-        <h2 className="mt-3 text-lg font-bold">Policy Encrypted & Stored</h2>
-        <p className="mt-2 text-sm text-gray-500">
-          Your family rules are now encrypted on-chain using Zama&apos;s FHE.
-          <br />
-          Your teen will never see the exact numbers — only whether their actions are within limits.
-        </p>
-        <div className="mt-4 space-y-1 rounded-lg bg-gray-50 p-3 text-left text-xs">
-          <p>✅ Single-action cap: encrypted</p>
-          <p>✅ Monthly recurring cap: encrypted</p>
-          <p>✅ Trust unlock threshold: encrypted</p>
-          <p>🔐 Only you can decrypt these values</p>
-        </div>
-      </div>
+      <Card className="mx-auto max-w-md bg-card/90 border-border/30 backdrop-blur-sm">
+        <CardContent className="p-8 text-center">
+          <div className="rounded-full bg-emerald-500/20 p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+            <Lock className="h-10 w-10 text-emerald-400" />
+          </div>
+          <h2 className="text-xl font-bold text-gold-gradient">Policy Encrypted & Stored</h2>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Your family rules are now encrypted on-chain using Zama&apos;s FHE.
+            <br />
+            Your teen will never see the exact numbers — only whether their actions are within limits.
+          </p>
+          <div className="mt-6 space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-950/40 p-4 text-left text-sm">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" />
+              Single-action cap: encrypted
+            </div>
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" />
+              Monthly recurring cap: encrypted
+            </div>
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" />
+              Trust unlock threshold: encrypted
+            </div>
+            <div className="flex items-center gap-2 text-primary">
+              <Lock className="h-4 w-4" />
+              Only you can decrypt these values
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
+  const trustLevelOptions = [
+    { value: 0, label: "Starter", desc: "All actions auto-approved" },
+    { value: 1, label: "Explorer", desc: "" },
+    { value: 2, label: "Saver", desc: "Recommended" },
+    { value: 3, label: "Manager", desc: "" },
+    { value: 4, label: "Planner", desc: "Strict" },
+    { value: 5, label: "Independent", desc: "Very strict" },
+  ];
+
   return (
     <div className="mx-auto max-w-md space-y-6 p-4">
-      <div>
-        <h2 className="text-lg font-bold">Set Family Rules</h2>
-        <p className="text-sm text-gray-500">
-          These values will be encrypted on-chain. Your teen will only see GREEN / YELLOW / RED / BLOCKED — never the actual numbers.
-        </p>
-      </div>
+      <Card className="bg-card/90 border-border/30 backdrop-blur-sm overflow-hidden">
+        <CardHeader className="pb-4 border-b border-border/30 bg-gradient-to-br from-primary/10 via-card to-card">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="rounded-lg bg-primary/20 p-2 border border-primary/30">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+            <Badge>Policy Setup</Badge>
+          </div>
+          <CardTitle className="text-xl">Set Family Rules</CardTitle>
+          <CardDescription>
+            These values will be encrypted on-chain. Your teen will only see GREEN / YELLOW / RED / BLOCKED.
+          </CardDescription>
+        </CardHeader>
 
-      <div className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Max per single action
-          </label>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">₹</span>
-            <input
-              type="range"
+        <CardContent className="p-6 space-y-6">
+          {/* Single Action Cap */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Max per single action</label>
+              <span className="font-mono font-bold text-primary">₹{singleCap}</span>
+            </div>
+            <Slider
+              value={[singleCap]}
+              onValueChange={(v) => setSingleCap(v[0])}
               min={100}
               max={5000}
               step={100}
-              value={singleCap}
-              onChange={(e) => setSingleCap(Number(e.target.value))}
-              className="flex-1"
+              className="w-full"
             />
-            <span className="w-16 text-right font-mono font-bold">₹{singleCap}</span>
+            <p className="text-xs text-muted-foreground">
+              Actions above this will need your approval
+            </p>
           </div>
-          <p className="mt-1 text-xs text-gray-400">
-            Actions above this → need your approval
-          </p>
-        </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Max monthly recurring total
-          </label>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500">₹</span>
-            <input
-              type="range"
+          {/* Recurring Cap */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Max monthly recurring total</label>
+              <span className="font-mono font-bold text-primary">₹{recurringCap}</span>
+            </div>
+            <Slider
+              value={[recurringCap]}
+              onValueChange={(v) => setRecurringCap(v[0])}
               min={200}
               max={10000}
               step={200}
-              value={recurringCap}
-              onChange={(e) => setRecurringCap(Number(e.target.value))}
-              className="flex-1"
+              className="w-full"
             />
-            <span className="w-16 text-right font-mono font-bold">₹{recurringCap}</span>
+            <p className="text-xs text-muted-foreground">
+              Total monthly subscriptions allowed before RED flag
+            </p>
           </div>
-          <p className="mt-1 text-xs text-gray-400">
-            Total monthly subscriptions allowed before RED flag
-          </p>
-        </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Passport level for auto-approve
-          </label>
-          <select
-            value={trustThreshold}
-            onChange={(e) => setTrustThreshold(Number(e.target.value))}
-            className="w-full rounded-lg border px-3 py-2"
-          >
-            <option value={0}>Lv.0 — Starter (all actions auto-approved)</option>
-            <option value={1}>Lv.1 — Explorer</option>
-            <option value={2}>Lv.2 — Saver (recommended)</option>
-            <option value={3}>Lv.3 — Manager</option>
-            <option value={4}>Lv.4 — Planner (strict)</option>
-            <option value={5}>Lv.5 — Independent (very strict)</option>
-          </select>
-          <p className="mt-1 text-xs text-gray-400">
-            Until your teen reaches this level, borderline actions need approval
-          </p>
-        </div>
+          {/* Trust Threshold */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Passport level for auto-approve</label>
+            <div className="grid grid-cols-3 gap-2">
+              {trustLevelOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setTrustThreshold(opt.value)}
+                  className={`rounded-lg border p-2 text-center transition-all ${
+                    trustThreshold === opt.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border/30 bg-card/50 hover:border-border"
+                  }`}
+                >
+                  <p className="text-xs font-medium">Lv.{opt.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{opt.label}</p>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Until your teen reaches this level, borderline actions need approval
+            </p>
+          </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Risk flags (bitmask)
-          </label>
-          <input
-            type="number"
-            value={riskFlags}
-            onChange={(e) => setRiskFlags(Number(e.target.value))}
-            className="w-full rounded-lg border px-3 py-2"
-            min={0}
-          />
-          <p className="mt-1 text-xs text-gray-400">
-            Non-zero flags will push decisions toward BLOCKED.
-          </p>
-        </div>
-      </div>
+          {/* Risk Flags */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Risk flags (bitmask)</label>
+            <Input
+              type="number"
+              value={riskFlags}
+              onChange={(e) => setRiskFlags(Number(e.target.value))}
+              className="bg-background/50 font-mono"
+              min={0}
+            />
+            <p className="text-xs text-muted-foreground">
+              Non-zero flags will push decisions toward BLOCKED
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-        <p className="font-medium text-amber-800">🔐 Privacy Note</p>
-        <p className="mt-1 text-xs text-amber-700">
+      {/* Privacy Note */}
+      <div className="rounded-xl border border-amber-500/30 bg-amber-950/40 p-4">
+        <div className="flex items-center gap-2 text-amber-400 mb-2">
+          <Lock className="h-4 w-4" />
+          <span className="font-medium text-sm">Privacy Note</span>
+        </div>
+        <p className="text-xs text-amber-400/80">
           These values are submitted as encrypted inputs with proofs. On-chain observers can only see the final decision classification.
         </p>
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+      {/* Error Message */}
+      {error && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-950/40 p-4">
+          <div className="flex items-center gap-2 text-rose-400">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm">{error}</span>
+          </div>
         </div>
-      ) : null}
+      )}
 
-      <button
+      {/* Submit Button */}
+      <Button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full rounded-xl bg-indigo-600 py-3 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+        className="w-full"
+        size="lg"
       >
-        {submitting ? "Encrypting & storing on-chain..." : "🔒 Encrypt & Save Rules"}
-      </button>
+        {submitting ? (
+          "Encrypting & storing on-chain..."
+        ) : (
+          <>
+            <Lock className="h-4 w-4 mr-2" />
+            Encrypt & Save Rules
+          </>
+        )}
+      </Button>
     </div>
   );
 }

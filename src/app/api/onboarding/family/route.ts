@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
       teenAddress: teenSession.address,
       teenPkpPublicKey: teenSession.pkpPublicKey,
       teenPkpTokenId: teenSession.pkpTokenId,
-      clawrenceAddress: guardianSession.address,
+      clawrenceAddress:
+        guardianSession.pkpAddress || guardianSession.address,
       clawrencePkpPublicKey: guardianSession.pkpPublicKey,
       clawrencePkpTokenId: guardianSession.pkpTokenId,
       litActionCid: body.litActionCid || SAFE_EXECUTOR_CID || "",

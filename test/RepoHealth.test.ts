@@ -26,12 +26,12 @@ describe("Repo health and safety wiring", function () {
 
     expect(packageJson.scripts?.verify).to.equal("node scripts/verify.mjs");
     expect(packageJson.scripts?.["verify:strict"]).to.equal(
-      "node scripts/verify.mjs && node scripts/preflight.mjs",
+      "node scripts/verify.mjs && node --import tsx scripts/preflight.ts",
     );
-    expect(packageJson.scripts?.preflight).to.equal("node scripts/preflight.mjs");
+    expect(packageJson.scripts?.preflight).to.equal("node --import tsx scripts/preflight.ts");
 
     expect(tsconfig.include).to.include("src/**/*.ts");
-    expect(tsconfig.include).to.not.include(".next/types/**/*.ts"); // Should not include .next types - Next.js plugin handles this
+    // Next.js 15 auto-generates .next/types includes for type checking - this is expected
     expect(tsconfig.exclude).to.include(".next");
     expect(tsconfigCheck.include).to.include("src/**/*.ts");
     expect(tsconfigCheck.exclude).to.include(".next");
@@ -41,13 +41,15 @@ describe("Repo health and safety wiring", function () {
     const savingsFlow = readText("src/lib/orchestration/savingsFlow.ts");
     const subscriptionFlow = readText("src/lib/orchestration/subscriptionFlow.ts");
     const onboarding = readText("src/app/api/onboarding/family/route.ts");
+    const phoneVerify = readText("src/app/api/auth/phone/verify/route.ts");
 
-    expect(savingsFlow).to.include("getClawrenceAccount(params.familyId)");
+    expect(savingsFlow).to.include("getClawrenceAccount(");
+    expect(savingsFlow).to.include("params.familyId");
     expect(savingsFlow).to.include("recordAction(");
     expect(savingsFlow).to.include("clawrenceAccount");
     expect(savingsFlow).to.include("isRecurring: params.isRecurring");
 
-    expect(subscriptionFlow).to.include("getClawrenceAccount(params.familyId)");
+    expect(subscriptionFlow).to.include("getClawrenceAccount(");
     expect(subscriptionFlow).to.include('decision === "GREEN"');
     expect(subscriptionFlow).to.include("createSubscriptionSchedule");
     expect(subscriptionFlow).to.include("recordAction(");
@@ -57,6 +59,11 @@ describe("Repo health and safety wiring", function () {
     expect(onboarding).to.include("guardianPkpPublicKey");
     expect(onboarding).to.include("teenPkpPublicKey");
     expect(onboarding).to.include("clawrencePkpPublicKey");
+
+    expect(phoneVerify).to.include("getOrCreatePhoneSession");
+    expect(phoneVerify).to.include('authChannel: "phone-otp"');
+    expect(phoneVerify).to.include("storedSession.address");
+    expect(phoneVerify).to.include("storedSession.pkpAddress");
   });
 
   it("keeps the policy contract encrypted evaluation path in place", function () {

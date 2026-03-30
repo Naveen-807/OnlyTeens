@@ -15,7 +15,7 @@ import type { AuthChannel, Role, UserSession } from "@/lib/types";
 
 let mintingAccount: ReturnType<typeof privateKeyToAccount> | null = null;
 
-function getMintingAccount() {
+export function getLitMintingAccount() {
   const key = normalizePrivateKeyEnv("LIT_MINTING_KEY", process.env.LIT_MINTING_KEY);
   if (!mintingAccount) {
     mintingAccount = privateKeyToAccount(key);
@@ -23,8 +23,24 @@ function getMintingAccount() {
   return mintingAccount;
 }
 
+export function mapLitMintingError(error: unknown, walletAddress: string): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("insufficient funds") ||
+    normalized.includes("exceeds the balance of the account")
+  ) {
+    return new Error(
+      `LIT minting wallet ${walletAddress} does not have enough Lit testnet funds to mint a PKP. Fund this wallet on the Lit network, then retry onboarding.`,
+    );
+  }
+
+  return error instanceof Error ? error : new Error(message);
+}
+
 export async function buildPhoneAuthContext(session: UserSession) {
-  const account = getMintingAccount();
+  const account = getLitMintingAccount();
   const sessionKeyPair = {
     publicKey: `0x${randomBytes(32).toString("hex")}`,
     secretKey: `0x${randomBytes(32).toString("hex")}`,
@@ -98,14 +114,20 @@ export async function mintPKPWithCustomAuth(
 }> {
   const client = await getLitClient();
   const scopes = role === "guardian" ? [1] : [2];
+  const signer = getLitMintingAccount();
 
-  const result: any = await (client as any).mintWithCustomAuth({
-    signer: getMintingAccount(),
-    authMethod,
-    scopes,
-    addPkpAsPermittedAddress: false,
-    sendPkpToItself: true,
-  });
+  let result: any;
+  try {
+    result = await (client as any).mintWithCustomAuth({
+      signer,
+      authMethod,
+      scopes,
+      addPkpAsPermittedAddress: false,
+      sendPkpToItself: true,
+    });
+  } catch (error) {
+    throw mapLitMintingError(error, signer.address);
+  }
 
   return {
     tokenId: result.pkp.tokenId,
@@ -122,19 +144,25 @@ export async function mintClawrencePKP(
   ethAddress: string;
 }> {
   const client = await getLitClient();
+  const signer = getLitMintingAccount();
 
-  const result: any = await (client as any).mintWithCustomAuth({
-    signer: getMintingAccount(),
-    authMethod: {
-      authMethodType: 15,
-      authMethodId: litActionIpfsCid,
-      accessToken: "",
-    },
-    litActionIpfsCid,
-    scopes: [2],
-    addPkpAsPermittedAddress: false,
-    sendPkpToItself: true,
-  });
+  let result: any;
+  try {
+    result = await (client as any).mintWithCustomAuth({
+      signer,
+      authMethod: {
+        authMethodType: 15,
+        authMethodId: litActionIpfsCid,
+        accessToken: "",
+      },
+      litActionIpfsCid,
+      scopes: [2],
+      addPkpAsPermittedAddress: false,
+      sendPkpToItself: true,
+    });
+  } catch (error) {
+    throw mapLitMintingError(error, signer.address);
+  }
 
   return {
     tokenId: result.pkp.tokenId,

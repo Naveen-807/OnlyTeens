@@ -1,5 +1,6 @@
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
+import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -29,6 +30,22 @@ export function assertContractConfigForDemo(): void {
   }
 }
 
+export function assertPhoneAuthConfigForDemo(): void {
+  if (!isDemoStrictMode()) return;
+  normalizePrivateKeyEnv("LIT_MINTING_KEY", process.env.LIT_MINTING_KEY);
+}
+
+export function assertFamilyOnboardingConfigForDemo(): void {
+  if (!isDemoStrictMode()) return;
+
+  assertContractConfigForDemo();
+  normalizePrivateKeyEnv("LIT_MINTING_KEY", process.env.LIT_MINTING_KEY);
+  normalizePrivateKeyEnv(
+    "FLOW_TESTNET_PRIVATE_KEY or DEPLOYER_PRIVATE_KEY",
+    process.env.FLOW_TESTNET_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY,
+  );
+}
+
 export function assertEnvForDemo(required: string[]): void {
   if (!isDemoStrictMode()) return;
   for (const key of required) {
@@ -37,4 +54,3 @@ export function assertEnvForDemo(required: string[]): void {
     }
   }
 }
-

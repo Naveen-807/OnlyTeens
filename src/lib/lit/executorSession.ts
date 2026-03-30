@@ -35,6 +35,6 @@ export async function getClawrenceSession(
 
 export async function getClawrenceAccount(familyId: string) {
   const session = await getClawrenceSession(familyId);
-  const account = await getPkpAccount(session.pkpPublicKey, session.sessionSigs);
+  const account = await getPkpAccount(session);
   return { session, account };
 }

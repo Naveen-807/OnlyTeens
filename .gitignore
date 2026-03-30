@@ -32,6 +32,11 @@ Untitled*
 /proof18_four_track_winning_blueprint_2026-03-25.md
 /proof18_pl_genesis_track_strategy_2026-03-25.md
 /PROOF18_COMPLETE_PROJECT_LOGIC_DOCUMENT.md
+/2026-03-30.md
+/Onlyteens/
+/new plans/
+/obsidian-notes/
+/Untitled*
 
 # local Obsidian vault / editor artifacts
 /.obsidian/
@@ -40,6 +45,7 @@ Untitled*
 /plugins/obsidian-skills/
 
 # generated / IDE / local files
+.obsidian/
 .idea/
 .vscode/
 *.log

@@ -1,5 +1,6 @@
 "use client";
 
+import { AuthEntry } from "@/components/AuthEntry";
 import { SavingsFlow } from "@/components/SavingsFlow";
 import { useAuthStore } from "@/store/authStore";
 
@@ -10,8 +11,8 @@ export default function TeenSavePage() {
 
   if (!session || !familyId) {
     return (
-      <div className="text-sm text-gray-600">
-        Missing session or family. Complete onboarding first.
+      <div className="mx-auto max-w-md p-4">
+        <AuthEntry role="teen" />
       </div>
     );
   }

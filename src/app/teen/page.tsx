@@ -5,8 +5,15 @@ import { useAuthStore } from "@/store/authStore";
 
 export default function TeenDashboard() {
   const { session, family } = useAuthStore();
-  const { balances, passport, receipts, pendingApprovals, isLoading, refresh } =
-    useDashboardData();
+  const {
+    balances,
+    passport,
+    receipts,
+    pendingApprovals,
+    isLoading,
+    error,
+    refresh,
+  } = useDashboardData();
 
   if (!session || !family) {
     return (
@@ -29,6 +36,12 @@ export default function TeenDashboard() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-6">
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {error}
+        </div>
+      ) : null}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -128,7 +141,7 @@ export default function TeenDashboard() {
                 </span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Waiting for guardian...
+                Waiting for guardian review
               </p>
             </div>
           ))}

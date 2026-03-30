@@ -80,8 +80,27 @@ export function SubscriptionFlow({
       {result ? (
         <div className="space-y-2 rounded-lg border p-4 text-sm">
           <div className="font-semibold">Result</div>
-          <div>Success: {String(result.success)}</div>
-          <div>Decision: {result.decision}</div>
+          <div
+            className={`rounded-lg p-3 ${
+              result.success
+                ? "bg-green-50 text-green-900"
+                : result.requiresApproval
+                  ? "bg-amber-50 text-amber-900"
+                  : "bg-red-50 text-red-900"
+            }`}
+          >
+            <div className="font-medium">
+              {result.success
+                ? "Subscription executed on Flow"
+                : result.requiresApproval
+                  ? "Awaiting guardian approval"
+                  : "Subscription failed"}
+            </div>
+            <div className="mt-1 text-xs opacity-80">
+              Decision: {result.decision}
+              {result.zama?.evaluationTxHash ? ` • Zama tx ${result.zama.evaluationTxHash}` : ""}
+            </div>
+          </div>
           <div>Requires approval: {String(result.requiresApproval)}</div>
           {result.approvalRequestId ? (
             <div className="rounded bg-amber-50 p-2">
@@ -94,4 +113,3 @@ export function SubscriptionFlow({
     </div>
   );
 }
-

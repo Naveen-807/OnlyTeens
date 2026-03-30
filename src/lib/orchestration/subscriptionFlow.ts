@@ -6,7 +6,7 @@ import { createSubscriptionSchedule } from "@/lib/flow/scheduler";
 import { fundSubscription } from "@/lib/flow/vault";
 import { preActionExplanation, postDecisionExplanation, guardianExplanation, celebrationMessage } from "@/lib/clawrence/engine";
 import { executeSafeSigning } from "@/lib/lit/executor";
-import { getPkpAccount } from "@/lib/lit/viemAccount";
+import { getFlowAccount } from "@/lib/lit/viemAccount";
 import { evaluateAction } from "@/lib/zama/policy";
 import { uploadJSON } from "@/lib/storacha/client";
 import {
@@ -91,6 +91,11 @@ export async function requestSubscription(params: {
         success: false,
         decision,
         requiresApproval: false,
+        zama: {
+          decision,
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: policyResult.txHash || "",
+        },
         clawrence: { preExplanation, postExplanation },
         error: "This subscription is blocked by family policy",
       };
@@ -141,6 +146,11 @@ export async function requestSubscription(params: {
       requiresApproval: true,
       approvalRequestId: approvalRequest.id,
       approvalRequest,
+      zama: {
+        decision,
+        contractAddress: CONTRACTS.policy,
+        evaluationTxHash: policyResult.txHash || "",
+      },
       storacha: {
         receiptCid: pendingReceipt.cid,
         receiptUrl: pendingReceipt.url,
@@ -185,7 +195,7 @@ export async function executeApprovedSubscription(params: {
       familyId: params.familyId,
       txData: new Uint8Array([]),
       clawrencePublicKey: params.clawrencePublicKey,
-      sessionSigs: params.session.sessionSigs,
+      session: params.session,
     });
 
     if (!litResult.signed) {
@@ -193,17 +203,25 @@ export async function executeApprovedSubscription(params: {
         success: false,
         decision: params.decision as any,
         requiresApproval: false,
+        zama: {
+          decision: params.decision as any,
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: params.zamaTxHash || "",
+        },
+        lit: {
+          signed: false,
+          actionCid: SAFE_EXECUTOR_CID,
+          response: litResult.response,
+        },
+        clawrence: { preExplanation: params.preExplanation, postExplanation: params.postExplanation },
         error: litResult.reason,
       };
     }
 
-    const pkpAccount = await getPkpAccount(
-      params.session.pkpPublicKey,
-      params.session.sessionSigs,
-    );
+    const flowAccount = await getFlowAccount(params.session);
 
     const flowTx = await fundSubscription(
-      pkpAccount,
+      flowAccount,
       params.familyId,
       params.teenAddress,
       params.serviceName,
@@ -223,7 +241,7 @@ export async function executeApprovedSubscription(params: {
       );
     }
     await createSubscriptionSchedule(
-      pkpAccount,
+      flowAccount,
       params.familyId,
       params.teenAddress,
       amountWei,
@@ -234,7 +252,7 @@ export async function executeApprovedSubscription(params: {
     const parsedEvents = await parseTransactionEvents(flowTx.txHash as `0x${string}`);
 
     await recordAction(
-      pkpAccount,
+      flowAccount,
       params.familyId,
       params.teenAddress,
       "subscription",

@@ -11,7 +11,8 @@ type PhoneChallenge = {
   phoneNumber: string;
   role: Role;
   familyId?: string;
-  codeHash: string;
+  deliveryMode: "demo" | "twilio";
+  codeHash?: string;
   maskedPhone: string;
   createdAt: string;
   expiresAt: string;
@@ -71,11 +72,13 @@ export function createPhoneChallenge(params: {
   phoneNumber: string;
   role: Role;
   familyId?: string;
+  deliveryMode: "demo" | "twilio";
+  code?: string;
 }) {
   const store = readStore();
   const phoneNumber = normalizePhone(params.phoneNumber);
   const challengeId = crypto.randomUUID();
-  const demoCode = generateOtp();
+  const demoCode = params.code ?? generateOtp();
   const createdAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + TTL_MS).toISOString();
 
@@ -84,7 +87,8 @@ export function createPhoneChallenge(params: {
     phoneNumber,
     role: params.role,
     familyId: params.familyId,
-    codeHash: hashCode(demoCode),
+    deliveryMode: params.deliveryMode,
+    codeHash: params.deliveryMode === "demo" ? hashCode(demoCode) : undefined,
     maskedPhone: maskPhoneNumber(phoneNumber),
     createdAt,
     expiresAt,
@@ -126,11 +130,22 @@ export function verifyPhoneChallenge(params: {
     throw new Error("OTP_LOCKED");
   }
 
-  if (challenge.codeHash !== hashCode(params.code)) {
+  if (challenge.deliveryMode === "demo" && challenge.codeHash !== hashCode(params.code)) {
     writeStore(store);
     throw new Error("OTP_INVALID");
   }
 
+  challenge.verifiedAt = new Date().toISOString();
+  writeStore(store);
+  return challenge;
+}
+
+export function markPhoneChallengeVerified(challengeId: string) {
+  const store = readStore();
+  const challenge = store[challengeId];
+  if (!challenge) {
+    throw new Error("OTP_NOT_FOUND");
+  }
   challenge.verifiedAt = new Date().toISOString();
   writeStore(store);
   return challenge;

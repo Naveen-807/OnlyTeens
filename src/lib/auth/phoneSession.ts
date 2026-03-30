@@ -3,11 +3,14 @@ import "server-only";
 import fs from "fs";
 import path from "path";
 
-import { privateKeyToAccount } from "viem/accounts";
 import { keccak256, stringToBytes } from "viem";
 
 import { getStoredFlowWallet } from "@/lib/flow/walletSession";
 import { getLitClient } from "@/lib/lit/client";
+import {
+  getLitMintingAccount,
+  mapLitMintingError,
+} from "@/lib/lit/auth";
 import { normalizeVerifiedPhone } from "@/lib/auth/twilio";
 import type { Role, UserSession } from "@/lib/types";
 
@@ -50,14 +53,6 @@ function sessionKey(role: Role, phoneNumber: string) {
   return `${role}:${normalizeVerifiedPhone(phoneNumber)}`;
 }
 
-function getMintingAccount() {
-  const key = process.env.LIT_MINTING_KEY;
-  if (!key) {
-    throw new Error("Missing LIT_MINTING_KEY (required for PKP minting)");
-  }
-  return privateKeyToAccount(key as `0x${string}`);
-}
-
 function toHexSessionKey(role: Role, phoneNumber: string) {
   return keccak256(stringToBytes(sessionKey(role, phoneNumber)));
 }
@@ -81,11 +76,16 @@ export async function getOrCreatePhoneSession(params: {
   }
 
   const client = await getLitClient();
-  const mintingAccount = getMintingAccount();
+  const mintingAccount = getLitMintingAccount();
 
-  const mintResult: any = await (client as any).mintWithEoa({
-    account: mintingAccount,
-  });
+  let mintResult: any;
+  try {
+    mintResult = await (client as any).mintWithEoa({
+      account: mintingAccount,
+    });
+  } catch (error) {
+    throw mapLitMintingError(error, mintingAccount.address);
+  }
 
   const pkp = mintResult?.pkp || mintResult?.pkpData?.data || mintResult?.data;
   const pkpPublicKey = pkp?.publicKey || pkp?.pubkey;

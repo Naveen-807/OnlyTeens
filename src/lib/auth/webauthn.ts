@@ -134,7 +134,7 @@ export async function verifyPasskeyRegistration(
       credentialId: credential.id,
       credentialPublicKey: credential.publicKey,
       counter: credential.counter,
-      transports: response.response.transports,
+      transports: response.response.transports as AuthenticatorTransport[] | undefined,
       userId,
       createdAt: Date.now(),
       derivedAddress,
@@ -220,7 +220,7 @@ export async function verifyPasskeyAuthentication(
       expectedRPID: RP_ID,
       credential: {
         id: credential.credentialId,
-        publicKey: credential.credentialPublicKey,
+        publicKey: credential.credentialPublicKey as Uint8Array<ArrayBuffer>,
         counter: credential.counter,
       },
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Bell, BookHeart, Bot, BriefcaseBusiness, CircleDollarSign, Landmark, ScrollText, ShieldEllipsis, Sparkles, WalletCards } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -60,11 +61,20 @@ export function Proof18Shell({
           <div className="space-y-4">
             <div className="rounded-[1.75rem] bg-[linear-gradient(160deg,rgba(255,255,255,0.9),rgba(238,235,225,0.88))] p-4">
               <Badge className="border-primary/30 bg-primary/10 text-primary">Proof18</Badge>
+              <div className="mt-4">
+                <Image
+                  src="/proof18-wordmark.svg"
+                  alt="Proof18"
+                  width={180}
+                  height={40}
+                  className="h-auto w-[160px]"
+                />
+              </div>
               <h1 className="mt-4 text-[clamp(2rem,5vw,3.4rem)] font-semibold leading-[0.88] tracking-tight text-foreground" style={{ fontFamily: '"Iowan Old Style", "Palatino Linotype", serif' }}>
-                Guided money, earned freedom.
+                Guided money, private rules, revocable autonomy.
               </h1>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Teen-first finance with guardian authority, policy privacy, and an AI guide that explains the rules.
+                Flow executes. Zama protects policy on Sepolia. Vincent and Lit keep Clawrence inside a bounded mandate.
               </p>
               <div className="mt-4">
                 <HoverBorderGradient as="div" containerClassName="rounded-full">
@@ -74,10 +84,10 @@ export function Proof18Shell({
             </div>
 
             <div className="grid grid-cols-2 gap-2 rounded-[1.5rem] bg-secondary p-1">
-              <Button variant={actor === "teen" ? "primary" : "ghost"} className="rounded-[1.2rem]" onClick={() => setActor("teen")}>
+              <Button variant={actor === "teen" ? "default" : "ghost"} className="rounded-[1.2rem]" onClick={() => setActor("teen")}>
                 Teen
               </Button>
-              <Button variant={actor === "parent" ? "primary" : "ghost"} className="rounded-[1.2rem]" onClick={() => setActor("parent")}>
+              <Button variant={actor === "parent" ? "default" : "ghost"} className="rounded-[1.2rem]" onClick={() => setActor("parent")}>
                 Parent
               </Button>
             </div>
@@ -133,8 +143,8 @@ export function Proof18Shell({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge className="border-primary/25 bg-primary/8 text-primary">Flow, Lit, Zama, Filecoin</Badge>
-                <Badge>5-layer UI architecture</Badge>
+                <Badge className="border-primary/25 bg-primary/8 text-primary">Flow Testnet • Zama Sepolia • Vincent / Lit</Badge>
+                <Badge>Guardian-delegated execution</Badge>
               </div>
             </div>
           </Card>

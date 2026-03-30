@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
 import { AuthEntry } from "@/components/AuthEntry";
+import { AppShell } from "@/components/layout/app-shell";
 import { useAuthStore } from "@/store/authStore";
 
 export default function GuardianLayout({
@@ -12,31 +11,25 @@ export default function GuardianLayout({
 }) {
   const { session } = useAuthStore();
 
-  return (
-    <div className="min-h-screen">
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between p-4">
-          <Link href="/" className="font-bold">
-            Proof18
-          </Link>
-          <nav className="flex gap-3 text-sm">
-            <Link href="/auth">Auth</Link>
-            <Link href="/guardian">Home</Link>
-            <Link href="/guardian/setup">Policy</Link>
-            <Link href="/guardian/inbox">Inbox</Link>
-            <Link href="/guardian/family">Family</Link>
-            <Link href="/guardian/activity">Activity</Link>
-          </nav>
-        </div>
-      </header>
-
-      {!session ? (
-        <div className="mx-auto max-w-3xl p-6">
+  // Show auth if not logged in
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
           <AuthEntry role="guardian" />
         </div>
-      ) : null}
+      </div>
+    );
+  }
 
-      <div className="mx-auto max-w-5xl p-4">{children}</div>
-    </div>
+  // Get user name from session
+  const userName = session.phoneNumber
+    ? `Guardian ${session.phoneNumber.slice(-4)}`
+    : 'Guardian';
+
+  return (
+    <AppShell role="guardian" userName={userName}>
+      <div className="pb-20 md:pb-0">{children}</div>
+    </AppShell>
   );
 }

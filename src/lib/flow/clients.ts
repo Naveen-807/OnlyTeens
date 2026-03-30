@@ -4,6 +4,7 @@ import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 import { FLOW_TESTNET } from "@/lib/constants";
+import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 
 export const flowPublicClient = createPublicClient({
   chain: FLOW_TESTNET,
@@ -18,12 +19,16 @@ export const flowWalletClient = createWalletClient({
 });
 
 export function getServiceAccount() {
-  const privateKey =
-    process.env.FLOW_TESTNET_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+  const envName = process.env.FLOW_TESTNET_PRIVATE_KEY
+    ? "FLOW_TESTNET_PRIVATE_KEY"
+    : process.env.DEPLOYER_PRIVATE_KEY
+      ? "DEPLOYER_PRIVATE_KEY"
+      : "";
+  const privateKey = process.env.FLOW_TESTNET_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
 
   if (!privateKey) {
     throw new Error("Missing FLOW_TESTNET_PRIVATE_KEY or DEPLOYER_PRIVATE_KEY");
   }
 
-  return privateKeyToAccount(privateKey as `0x${string}`);
+  return privateKeyToAccount(normalizePrivateKeyEnv(envName, privateKey));
 }

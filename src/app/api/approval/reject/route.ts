@@ -9,10 +9,12 @@ import { rejectRequestDurable } from "@/lib/approvals/durableApprovals";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { requestId, guardianNote } = body;
+    const { requestId, guardianNote, session } = body;
     const idempotencyKey = (body.idempotencyKey || req.headers.get("idempotency-key")) as string | null;
 
-    if (!requestId) return fail("BAD_REQUEST", "requestId required", 400);
+    if (!requestId || !session) {
+      return fail("BAD_REQUEST", "requestId and session required", 400);
+    }
 
     const cached = getCachedIdempotentResult(idempotencyKey);
     if (cached) return ok(cached as Record<string, unknown>);

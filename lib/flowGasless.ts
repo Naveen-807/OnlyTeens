@@ -1,5 +1,6 @@
 import { createWalletClient, createPublicClient, http, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 
 // Flow EVM Testnet chain definition
 export const flowTestnet = {
@@ -21,7 +22,7 @@ export const flowTestnet = {
 
 // Service account that sponsors gas
 const serviceAccount = privateKeyToAccount(
-  process.env.SERVICE_ACCOUNT_KEY as `0x${string}`
+  normalizePrivateKeyEnv("SERVICE_ACCOUNT_KEY", process.env.SERVICE_ACCOUNT_KEY)
 );
 
 // Public client for reads (standard RPC)

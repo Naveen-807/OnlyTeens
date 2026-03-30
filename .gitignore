@@ -18,6 +18,11 @@
 *.pem
 
 # scratch / prompt docs to keep out of git
+*.md
+*.json
+*.base
+*.canvas
+Untitled*
 /codesnippet.md
 /FUlldev.md
 /fullproject.md
@@ -27,6 +32,12 @@
 /proof18_four_track_winning_blueprint_2026-03-25.md
 /proof18_pl_genesis_track_strategy_2026-03-25.md
 /PROOF18_COMPLETE_PROJECT_LOGIC_DOCUMENT.md
+
+# local Obsidian vault / editor artifacts
+/.obsidian/
+/Onlyteens/
+/obsidian-notes/
+/plugins/obsidian-skills/
 
 # generated / IDE / local files
 .idea/

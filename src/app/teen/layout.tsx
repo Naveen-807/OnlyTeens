@@ -16,6 +16,7 @@ export default function TeenLayout({ children }: { children: React.ReactNode }) 
             Proof18
           </Link>
           <nav className="flex gap-3 text-sm">
+            <Link href="/auth">Auth</Link>
             <Link href="/teen">Home</Link>
             <Link href="/teen/save">Save</Link>
             <Link href="/teen/subscribe">Subscribe</Link>

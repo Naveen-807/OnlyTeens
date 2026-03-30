@@ -20,6 +20,7 @@ export default function GuardianLayout({
             Proof18
           </Link>
           <nav className="flex gap-3 text-sm">
+            <Link href="/auth">Auth</Link>
             <Link href="/guardian">Home</Link>
             <Link href="/guardian/setup">Policy</Link>
             <Link href="/guardian/inbox">Inbox</Link>

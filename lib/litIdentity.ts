@@ -1,15 +1,18 @@
 import { getLitClient } from "./litClient";
 import { privateKeyToAccount } from "viem/accounts";
+import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 
-const mintingAccount = privateKeyToAccount(
-  process.env.LIT_MINTING_KEY as `0x${string}`
-);
+function getMintingAccount() {
+  return privateKeyToAccount(
+    normalizePrivateKeyEnv("LIT_MINTING_KEY", process.env.LIT_MINTING_KEY)
+  );
+}
 
 // ─── Mint Guardian PKP ───
 export async function mintGuardianPKP(guardianAuthPayload: any) {
   const client = await getLitClient();
   const result = await client.mintWithAuth({
-    signer: mintingAccount,
+    signer: getMintingAccount(),
     authMethod: guardianAuthPayload,
     scopes: [1], // SignAnything — full guardian control
   });
@@ -24,7 +27,7 @@ export async function mintGuardianPKP(guardianAuthPayload: any) {
 export async function mintTeenPKP(teenAuthPayload: any) {
   const client = await getLitClient();
   const result = await client.mintWithAuth({
-    signer: mintingAccount,
+    signer: getMintingAccount(),
     authMethod: teenAuthPayload,
     scopes: [2], // PersonalSign only — restricted
   });
@@ -39,7 +42,7 @@ export async function mintTeenPKP(teenAuthPayload: any) {
 export async function mintClawrencePKP(litActionIpfsCid: string) {
   const client = await getLitClient();
   const result = await client.mintWithCustomAuth({
-    signer: mintingAccount,
+    signer: getMintingAccount(),
     authMethod: {
       authMethodType: 15, // Lit Action auth method
       authMethodId: litActionIpfsCid,

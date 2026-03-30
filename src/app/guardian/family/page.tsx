@@ -1,10 +1,12 @@
 "use client";
 
+import { Users, Shield, User, Bot } from "lucide-react";
+
 import { FamilyOnboarding } from "@/components/FamilyOnboarding";
 import { PermissionsProof } from "@/components/PermissionsProof";
 import { useAuthStore } from "@/store/authStore";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function GuardianFamilyPage() {
   const { session, family } = useAuthStore();
@@ -19,25 +21,43 @@ export default function GuardianFamilyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4">
-      <Card className="p-5">
-        <Badge className="border-primary/20 bg-primary/10 text-primary">
-          Family & permissions
-        </Badge>
-        <div className="mt-4 grid gap-3 text-sm text-muted-foreground md:grid-cols-3">
-          <div className="rounded-[1.1rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.16em]">Family ID</p>
-            <p className="mt-2 font-mono text-xs break-all">{family.familyId}</p>
+    <div className="mx-auto max-w-4xl space-y-6 p-4">
+      <Card className="bg-card/90 border-border/30 backdrop-blur-sm overflow-hidden">
+        <CardHeader className="pb-4 border-b border-border/30 bg-gradient-to-br from-primary/10 via-card to-card">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="rounded-lg bg-primary/20 p-2 border border-primary/30">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <Badge>Family & Permissions</Badge>
           </div>
-          <div className="rounded-[1.1rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.16em]">Guardian</p>
-            <p className="mt-2 font-mono text-xs break-all">{family.guardianAddress}</p>
+          <CardTitle className="text-xl">Family Overview</CardTitle>
+        </CardHeader>
+
+        <CardContent className="p-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-border/30 bg-card/50 p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-3">
+                <Shield className="h-3.5 w-3.5" />
+                Family ID
+              </div>
+              <p className="font-mono text-xs text-foreground break-all">{family.familyId}</p>
+            </div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/40 p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-emerald-400 mb-3">
+                <User className="h-3.5 w-3.5" />
+                Guardian
+              </div>
+              <p className="font-mono text-xs text-emerald-400/80 break-all">{family.guardianAddress}</p>
+            </div>
+            <div className="rounded-xl border border-blue-500/20 bg-blue-950/40 p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-blue-400 mb-3">
+                <User className="h-3.5 w-3.5" />
+                Teen
+              </div>
+              <p className="font-mono text-xs text-blue-400/80 break-all">{family.teenAddress}</p>
+            </div>
           </div>
-          <div className="rounded-[1.1rem] border border-border/70 bg-white/70 p-4">
-            <p className="text-[11px] uppercase tracking-[0.16em]">Teen</p>
-            <p className="mt-2 font-mono text-xs break-all">{family.teenAddress}</p>
-          </div>
-        </div>
+        </CardContent>
       </Card>
 
       <PermissionsProof

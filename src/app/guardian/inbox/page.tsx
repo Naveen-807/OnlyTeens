@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle, RefreshCw, XCircle } from "lucide-react";
 
 import type { ApprovalRequest } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 type InboxStatus =
   | { kind: "idle" }
@@ -42,10 +49,11 @@ export default function GuardianInbox() {
           message: data.error || "Failed to load approval requests",
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to load approval requests";
       setStatus({
         kind: "error",
-        message: err?.message || "Failed to load approval requests",
+        message: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -81,14 +89,13 @@ export default function GuardianInbox() {
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       setStatus({
         kind: "success",
-        message: `Approved ${requestId}. Receipt CID: ${
-          data.execution?.storacha?.receiptCid || "stored"
-        }`,
+        message: `Approved successfully. Receipt stored.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Approval failed";
       setStatus({
         kind: "error",
-        message: err?.message || "Approval failed",
+        message: errorMessage,
       });
     } finally {
       setProcessing(null);
@@ -121,12 +128,13 @@ export default function GuardianInbox() {
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       setStatus({
         kind: "success",
-        message: `Rejected ${requestId}. Rejection CID: ${data.rejectionCid}`,
+        message: `Request declined.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Rejection failed";
       setStatus({
         kind: "error",
-        message: err?.message || "Rejection failed",
+        message: errorMessage,
       });
     } finally {
       setProcessing(null);
@@ -135,130 +143,173 @@ export default function GuardianInbox() {
 
   if (!session || !family) {
     return (
-      <div className="max-w-md mx-auto p-6 text-center">
-        <p className="text-gray-500">Please log in as guardian.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="text-6xl mb-4">🔐</div>
+        <h2 className="text-xl font-semibold mb-2 text-foreground">Guardian Access Required</h2>
+        <p className="text-muted-foreground">Please log in as guardian to continue.</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-md space-y-4 p-4">
-      <h2 className="flex items-center gap-2 text-lg font-bold">
-        📬 Approval Inbox
-        {sortedRequests.length > 0 && (
-          <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-            {sortedRequests.length}
-          </span>
-        )}
-      </h2>
-
-      {status.kind !== "idle" ? (
-        <div
-          className={`rounded-lg p-3 text-sm ${
-            status.kind === "success"
-              ? "bg-green-50 text-green-900"
-              : "bg-red-50 text-red-900"
-          }`}
-        >
-          {status.message}
+    <div className="mx-auto max-w-2xl space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-semibold text-foreground">Approval Inbox</h2>
+          {sortedRequests.length > 0 && (
+            <Badge className="border-rose-500/30 bg-rose-500/20 text-rose-400">
+              {sortedRequests.length}
+            </Badge>
+          )}
         </div>
-      ) : null}
+        <Button variant="ghost" size="sm" onClick={() => void fetchRequests()}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
 
-      {isLoading ? (
-        <div className="animate-pulse py-8 text-center text-gray-400">
-          Loading requests...
-        </div>
-      ) : sortedRequests.length === 0 ? (
-        <div className="py-8 text-center text-gray-400">
-          <p className="mb-2 text-4xl">✨</p>
-          <p>No pending requests</p>
-          <p className="mt-1 text-xs">
-            Requests from your teen will appear here.
-          </p>
-        </div>
-      ) : (
-        sortedRequests.map((req) => (
-          <div key={req.id} className="space-y-3 rounded-xl border p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium">
-                  {req.teenName} wants to {req.actionType}
-                </p>
-                <p className="text-sm text-gray-600">{req.description}</p>
-              </div>
-              <span
-                className={`rounded-full px-2 py-1 text-xs font-bold ${
-                  req.policyDecision === "RED"
-                    ? "bg-red-100 text-red-800"
-                    : req.policyDecision === "BLOCKED"
-                      ? "bg-gray-100 text-gray-800"
-                      : "bg-yellow-100 text-yellow-800"
-                }`}
-              >
-                {req.policyDecision}
-              </span>
-            </div>
-
-            <div className="rounded-lg bg-gray-50 p-3 text-sm">
-              <p className="mb-1 font-medium text-gray-600">🤖 Clawrence says</p>
-              <p>{req.clawrenceGuardianExplanation}</p>
-            </div>
-
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>
-                {req.currency}
-                {req.amount}
-                {req.isRecurring ? "/month" : ""}
-              </span>
-              <span>
-                Passport Lv.{req.teenPassportLevel} • {req.teenStreak}wk streak
-              </span>
-            </div>
-
-            <p className="text-xs text-gray-400">
-              Requested {new Date(req.requestedAt).toLocaleString()}
+      {/* Status Messages */}
+      {status.kind !== "idle" && (
+        <Card className={cn(
+          "border",
+          status.kind === "success"
+            ? "border-emerald-500/30 bg-emerald-950/30"
+            : "border-rose-500/30 bg-rose-950/30"
+        )}>
+          <CardContent className="p-4 flex items-center gap-3">
+            {status.kind === "success" ? (
+              <CheckCircle className="h-5 w-5 text-emerald-400" />
+            ) : (
+              <XCircle className="h-5 w-5 text-rose-400" />
+            )}
+            <p className={cn(
+              "text-sm",
+              status.kind === "success" ? "text-emerald-400" : "text-rose-400"
+            )}>
+              {status.message}
             </p>
-
-            <label className="block space-y-1">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                Guardian note
-              </span>
-              <textarea
-                value={notes[req.id] || ""}
-                onChange={(e) =>
-                  setNotes((prev) => ({ ...prev, [req.id]: e.target.value }))
-                }
-                className="min-h-20 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-400"
-                placeholder="Explain why you approve or reject this request..."
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => void handleApprove(req.id)}
-                disabled={processing === req.id}
-                className="rounded-lg bg-green-600 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {processing === req.id ? "Processing..." : "✅ Approve"}
-              </button>
-              <button
-                onClick={() => void handleReject(req.id)}
-                disabled={processing === req.id}
-                className="rounded-lg bg-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 disabled:opacity-50"
-              >
-                ❌ Decline
-              </button>
-            </div>
-          </div>
-        ))
+          </CardContent>
+        </Card>
       )}
 
-      <button
-        onClick={() => void fetchRequests()}
-        className="w-full py-2 text-center text-xs text-gray-400 hover:text-gray-600"
-      >
-        ↻ Refresh
-      </button>
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex justify-between">
+                  <Skeleton className="h-5 w-1/3" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-20 w-full rounded-lg" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 flex-1" />
+                  <Skeleton className="h-10 flex-1" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : sortedRequests.length === 0 ? (
+        <Card className="bg-card/60">
+          <CardContent className="py-12 text-center">
+            <div className="text-5xl mb-4">✨</div>
+            <p className="text-lg font-medium text-foreground mb-1">All caught up!</p>
+            <p className="text-sm text-muted-foreground">
+              Requests from your teen will appear here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {sortedRequests.map((req) => (
+            <Card key={req.id} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">
+                      {req.teenName} wants to {req.actionType}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{req.description}</p>
+                  </div>
+                  <Badge
+                    className={cn(
+                      "shrink-0",
+                      req.policyDecision === "RED"
+                        ? "border-rose-500/30 bg-rose-950/60 text-rose-400"
+                        : req.policyDecision === "BLOCKED"
+                          ? "border-neutral-500/30 bg-neutral-900/60 text-neutral-400"
+                          : "border-amber-500/30 bg-amber-950/60 text-amber-400"
+                    )}
+                  >
+                    {req.policyDecision}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* Clawrence Explanation */}
+                <div className="rounded-lg bg-primary/10 border border-primary/20 p-4">
+                  <p className="text-xs uppercase tracking-wider text-primary/70 mb-2">
+                    🤖 Clawrence says
+                  </p>
+                  <p className="text-sm text-foreground">{req.clawrenceGuardianExplanation}</p>
+                </div>
+
+                {/* Meta Info */}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gold-gradient font-medium">
+                    {req.currency}{req.amount}
+                    {req.isRecurring ? "/month" : ""}
+                  </span>
+                  <span className="text-muted-foreground">
+                    Passport Lv.{req.teenPassportLevel} • {req.teenStreak}wk streak
+                  </span>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Requested {new Date(req.requestedAt).toLocaleString()}
+                </p>
+
+                {/* Note Input */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Guardian note
+                  </label>
+                  <textarea
+                    value={notes[req.id] || ""}
+                    onChange={(e) =>
+                      setNotes((prev) => ({ ...prev, [req.id]: e.target.value }))
+                    }
+                    className="min-h-20 w-full rounded-lg border border-border/30 bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+                    placeholder="Explain why you approve or reject this request..."
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => void handleApprove(req.id)}
+                    disabled={processing === req.id}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {processing === req.id ? "Processing..." : "Approve"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleReject(req.id)}
+                    disabled={processing === req.id}
+                  >
+                    Decline
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

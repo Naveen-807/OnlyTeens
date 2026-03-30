@@ -1,13 +1,17 @@
 import "server-only";
 
-import { getLitClient } from "@/lib/lit/client";
+import { getFlowWalletAccount } from "@/lib/flow/walletSession";
+import type { UserSession } from "@/lib/types";
 
-export async function getPkpAccount(pkpPublicKey: string, sessionSigs: any) {
-  const client = await getLitClient();
+export async function getFlowAccount(session: UserSession) {
+  const phoneNumber =
+    session.phoneNumber ||
+    session.authMethod?.phoneNumber ||
+    session.authMethod?.metadata?.phoneNumber;
 
-  return await (client as any).getPkpViemAccount({
-    pkpPublicKey,
-    sessionSigs,
-  });
+  if (!phoneNumber) {
+    throw new Error("Missing phone number for Flow wallet lookup");
+  }
+
+  return getFlowWalletAccount(session.role, phoneNumber);
 }
-

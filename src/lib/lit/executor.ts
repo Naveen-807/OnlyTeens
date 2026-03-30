@@ -3,7 +3,8 @@ import "server-only";
 import { SAFE_EXECUTOR_CID } from "@/lib/constants";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { getLitClient } from "@/lib/lit/client";
-import type { ActionType, PolicyDecision } from "@/lib/types";
+import { buildPhoneAuthContext } from "@/lib/lit/auth";
+import type { ActionType, PolicyDecision, UserSession } from "@/lib/types";
 
 export interface ExecutorParams {
   action: ActionType;
@@ -13,7 +14,7 @@ export interface ExecutorParams {
   familyId: string;
   txData: Uint8Array;
   clawrencePublicKey: string;
-  sessionSigs: any;
+  session: UserSession;
 }
 
 export interface ExecutorResult {
@@ -32,10 +33,11 @@ export async function executeSafeSigning(
     throw new Error("MISSING_CONFIG:SAFE_EXECUTOR_CID is required for execution");
   }
   const client = await getLitClient();
+  const { authContext } = await buildPhoneAuthContext(params.session);
 
   const result: any = await (client as any).executeJs({
     ipfsId: SAFE_EXECUTOR_CID,
-    sessionSigs: params.sessionSigs,
+    authContext,
     jsParams: {
       action: params.action,
       policyDecision: params.policyDecision,

@@ -6,6 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
+import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 import { getFhevmInstance } from "@/lib/zama/client";
 import type { PolicyDecision } from "@/lib/types";
 
@@ -15,10 +16,14 @@ function decisionFromUint8(value: number): PolicyDecision {
 }
 
 function getEvaluatorAccount() {
-  const key =
-    process.env.ZAMA_EVALUATOR_PRIVATE_KEY || process.env.ZAMA_PRIVATE_KEY;
+  const envName = process.env.ZAMA_EVALUATOR_PRIVATE_KEY
+    ? "ZAMA_EVALUATOR_PRIVATE_KEY"
+    : process.env.ZAMA_PRIVATE_KEY
+      ? "ZAMA_PRIVATE_KEY"
+      : "";
+  const key = process.env.ZAMA_EVALUATOR_PRIVATE_KEY || process.env.ZAMA_PRIVATE_KEY;
   if (!key) return null;
-  return privateKeyToAccount(key as `0x${string}`);
+  return privateKeyToAccount(normalizePrivateKeyEnv(envName, key));
 }
 
 function getSepoliaWalletClient() {

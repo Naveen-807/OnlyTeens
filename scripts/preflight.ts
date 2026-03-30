@@ -3,10 +3,18 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { createPublicClient, http } from "viem";
+import { config as loadEnv } from "dotenv";
 
 import { normalizePrivateKeyEnv } from "../src/lib/runtime/privateKey";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
+
+for (const envFile of [".env.local", ".env"]) {
+  const envPath = resolve(process.cwd(), envFile);
+  if (existsSync(envPath)) {
+    loadEnv({ path: envPath, override: false });
+  }
+}
 
 type DeploymentShape = {
   contracts?: {

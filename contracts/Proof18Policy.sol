@@ -6,6 +6,7 @@ import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 import "./Proof18Access.sol";
 
 contract Proof18Policy is ZamaEthereumConfig {
+    address public owner;
     Proof18Access public access;
 
     struct FamilyPolicy {
@@ -24,13 +25,32 @@ contract Proof18Policy is ZamaEthereumConfig {
     }
 
     mapping(bytes32 => FamilyPolicy) private policies;
+    mapping(bytes32 => euint8) private latestDecisionHandles;
+    mapping(bytes32 => uint256) private latestDecisionAmounts;
+    mapping(bytes32 => bool) private latestDecisionRecurring;
+    mapping(bytes32 => address) private latestDecisionActors;
+    mapping(bytes32 => bool) private latestDecisionInitialized;
 
     event PolicySet(bytes32 indexed familyId, address guardian, uint256 timestamp);
-    event PolicyEvaluated(bytes32 indexed familyId, address indexed teen, string actionType, uint256 amount, Decision decision, uint256 timestamp);
+    event PolicyEvaluated(
+        bytes32 indexed familyId,
+        address indexed actor,
+        address indexed teen,
+        string actionType,
+        uint256 amount,
+        bool isRecurring,
+        uint256 timestamp
+    );
 
     constructor(address _access) {
         require(_access != address(0), "Invalid access");
+        owner = msg.sender;
         access = Proof18Access(_access);
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Owner only");
+        _;
     }
 
     function setPolicy(
@@ -64,6 +84,14 @@ contract Proof18Policy is ZamaEthereumConfig {
         FHE.allow(singleCap, msg.sender);
         FHE.allow(recurringCap, msg.sender);
         FHE.allow(trustThreshold, msg.sender);
+        FHE.allow(riskFlags, msg.sender);
+
+        if (owner != msg.sender) {
+            FHE.allow(singleCap, owner);
+            FHE.allow(recurringCap, owner);
+            FHE.allow(trustThreshold, owner);
+            FHE.allow(riskFlags, owner);
+        }
 
         emit PolicySet(familyId, msg.sender, block.timestamp);
     }
@@ -73,7 +101,7 @@ contract Proof18Policy is ZamaEthereumConfig {
         uint256 amount,
         uint8 currentPassportLevel,
         bool isRecurring
-    ) external returns (Decision) {
+    ) external {
         FamilyPolicy storage p = policies[familyId];
         require(p.initialized, "No policy");
         require(
@@ -81,73 +109,117 @@ contract Proof18Policy is ZamaEthereumConfig {
             "Not authorized"
         );
 
-        // Keep the confidential policy evaluation in-scope only for the encrypted output.
-        // This avoids "stack too deep" while still producing a publicly-decryptable encrypted decision.
-        {
-            require(amount <= type(uint64).max, "Amount too large");
+        require(amount <= type(uint64).max, "Amount too large");
 
+        euint8 decisionEnc;
+        {
             euint64 encAmount = FHE.asEuint64(uint64(amount));
             euint8 encPassport = FHE.asEuint8(currentPassportLevel);
-
+            ebool zeroAmount = FHE.eq(encAmount, FHE.asEuint64(uint64(0)));
             ebool hasRiskFlags = FHE.ne(p.riskFlags, FHE.asEuint8(uint8(0)));
-            ebool withinSingleCap = FHE.le(encAmount, p.singleActionCap);
-            ebool withinRecurringCap = FHE.le(encAmount, p.recurringMonthlyCap);
-            ebool meetsPassport = FHE.ge(encPassport, p.trustUnlockThreshold);
-
-            ebool useRecurringCap = FHE.asEbool(isRecurring);
-            ebool withinCap = FHE.select(useRecurringCap, withinRecurringCap, withinSingleCap);
-
-            // decisionEnc:
-            // - BLOCKED if risk flags are set
-            // - GREEN if within cap + meets passport threshold
-            // - YELLOW if within cap but doesn't meet passport threshold
-            // - RED if over cap
-            euint8 decisionEnc = FHE.select(
-                hasRiskFlags,
-                FHE.asEuint8(uint8(Decision.BLOCKED)),
-                FHE.select(
-                    withinCap,
-                    FHE.select(
-                        meetsPassport,
-                        FHE.asEuint8(uint8(Decision.GREEN)),
-                        FHE.asEuint8(uint8(Decision.YELLOW))
-                    ),
-                    FHE.asEuint8(uint8(Decision.RED))
-                )
+            ebool withinCap = FHE.select(
+                FHE.asEbool(isRecurring),
+                FHE.le(encAmount, p.recurringMonthlyCap),
+                FHE.le(encAmount, p.singleActionCap)
             );
 
-            FHE.allowThis(decisionEnc);
-            FHE.makePubliclyDecryptable(decisionEnc);
+            decisionEnc = FHE.select(
+                zeroAmount,
+                FHE.asEuint8(uint8(Decision.BLOCKED)),
+                FHE.select(
+                    hasRiskFlags,
+                    FHE.asEuint8(uint8(Decision.BLOCKED)),
+                    FHE.select(
+                        withinCap,
+                        FHE.select(
+                            FHE.ge(encPassport, p.trustUnlockThreshold),
+                            FHE.asEuint8(uint8(Decision.GREEN)),
+                            FHE.asEuint8(uint8(Decision.YELLOW))
+                        ),
+                        FHE.asEuint8(uint8(Decision.RED))
+                    )
+                )
+            );
         }
 
-        Decision decision;
-        if (amount == 0) {
-            decision = Decision.BLOCKED;
-        } else if (isRecurring) {
-            // MVP: recurring actions always require guardian review (YELLOW/RED is decided offchain).
-            // The confidential cap checks above are still computed and made decryptable.
-            decision = Decision.RED;
-        } else if (currentPassportLevel >= 2 && amount <= 15) {
-            decision = Decision.GREEN;
-        } else {
-            decision = Decision.YELLOW;
+        latestDecisionHandles[familyId] = decisionEnc;
+        latestDecisionAmounts[familyId] = amount;
+        latestDecisionRecurring[familyId] = isRecurring;
+        latestDecisionActors[familyId] = msg.sender;
+        latestDecisionInitialized[familyId] = true;
+
+        FHE.allowThis(decisionEnc);
+        FHE.allow(decisionEnc, msg.sender);
+
+        address guardian = access.guardians(familyId);
+        if (guardian != address(0) && guardian != msg.sender) {
+            FHE.allow(decisionEnc, guardian);
+        }
+
+        address executor = access.executors(familyId);
+        if (executor != address(0) && executor != msg.sender) {
+            FHE.allow(decisionEnc, executor);
+        }
+
+        if (owner != msg.sender) {
+            FHE.allow(decisionEnc, owner);
         }
 
         address teen = access.teens(familyId);
         string memory actionType = isRecurring ? "subscription" : "savings";
 
-        emit PolicyEvaluated(familyId, teen, actionType, amount, decision, block.timestamp);
-        return decision;
+        emit PolicyEvaluated(familyId, msg.sender, teen, actionType, amount, isRecurring, block.timestamp);
     }
 
     function getGuardianPolicyView(bytes32 familyId)
         external
         view
-        returns (euint64 singleCap, euint64 recurringCap, euint8 trustThreshold)
+        returns (euint64 singleCap, euint64 recurringCap, euint8 trustThreshold, euint8 riskFlags)
     {
         FamilyPolicy storage p = policies[familyId];
         require(access.isGuardian(familyId, msg.sender), "Guardian only");
-        return (p.singleActionCap, p.recurringMonthlyCap, p.trustUnlockThreshold);
+        return (p.singleActionCap, p.recurringMonthlyCap, p.trustUnlockThreshold, p.riskFlags);
+    }
+
+    function getServerPolicyView(bytes32 familyId)
+        external
+        view
+        onlyOwner
+        returns (euint64 singleCap, euint64 recurringCap, euint8 trustThreshold, euint8 riskFlags)
+    {
+        FamilyPolicy storage p = policies[familyId];
+        require(p.initialized, "No policy");
+        return (p.singleActionCap, p.recurringMonthlyCap, p.trustUnlockThreshold, p.riskFlags);
+    }
+
+    function getGuardianLatestDecisionView(bytes32 familyId)
+        external
+        view
+        returns (euint8 decisionHandle, uint256 amount, bool isRecurring, address actor)
+    {
+        require(access.isGuardian(familyId, msg.sender), "Guardian only");
+        require(latestDecisionInitialized[familyId], "No decision");
+        return (
+            latestDecisionHandles[familyId],
+            latestDecisionAmounts[familyId],
+            latestDecisionRecurring[familyId],
+            latestDecisionActors[familyId]
+        );
+    }
+
+    function getServerLatestDecisionView(bytes32 familyId)
+        external
+        view
+        onlyOwner
+        returns (euint8 decisionHandle, uint256 amount, bool isRecurring, address actor)
+    {
+        require(latestDecisionInitialized[familyId], "No decision");
+        return (
+            latestDecisionHandles[familyId],
+            latestDecisionAmounts[familyId],
+            latestDecisionRecurring[familyId],
+            latestDecisionActors[familyId]
+        );
     }
 
     function isPolicySet(bytes32 familyId) external view returns (bool) {

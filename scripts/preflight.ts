@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 
 import { createPublicClient, http } from "viem";
 
+import { normalizePrivateKeyEnv } from "../src/lib/runtime/privateKey";
+
 const ZERO = "0x0000000000000000000000000000000000000000";
 
 type DeploymentShape = {
@@ -81,8 +83,22 @@ function assertStorachaCreds() {
 }
 
 function assertEvaluatorKeyFundedHint() {
-  requiredEnv("ZAMA_EVALUATOR_PRIVATE_KEY");
+  normalizePrivateKeyEnv(
+    "ZAMA_EVALUATOR_PRIVATE_KEY",
+    process.env.ZAMA_EVALUATOR_PRIVATE_KEY || process.env.ZAMA_PRIVATE_KEY,
+  );
   console.log("  Zama evaluator private key configured (funding must be verified onchain)");
+}
+
+function assertMintingKeys() {
+  normalizePrivateKeyEnv("LIT_MINTING_KEY", process.env.LIT_MINTING_KEY);
+  console.log("  Lit minting key format looks valid");
+
+  const flowKey = process.env.FLOW_TESTNET_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+  if (flowKey) {
+    normalizePrivateKeyEnv("FLOW_TESTNET_PRIVATE_KEY or DEPLOYER_PRIVATE_KEY", flowKey);
+    console.log("  Flow service key format looks valid");
+  }
 }
 
 async function main() {
@@ -115,6 +131,7 @@ async function main() {
   await assertLitActionCidResolvable(actionCid);
 
   assertStorachaCreds();
+  assertMintingKeys();
   assertEvaluatorKeyFundedHint();
 
   console.log("Preflight passed.");
@@ -124,4 +141,3 @@ main().catch((error) => {
   console.error(`Preflight failed: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 });
-

@@ -6,8 +6,9 @@ import { createSubscriptionSchedule } from "@/lib/flow/scheduler";
 import { fundSubscription } from "@/lib/flow/vault";
 import { preActionExplanation, postDecisionExplanation, guardianExplanation, celebrationMessage } from "@/lib/clawrence/engine";
 import { executeSafeSigning } from "@/lib/lit/executor";
-import { getFlowAccount } from "@/lib/lit/viemAccount";
+import { getClawrenceAccount } from "@/lib/lit/executorSession";
 import { evaluateAction } from "@/lib/zama/policy";
+import { evaluateVincentGuardrails } from "@/lib/vincent/policy";
 import { uploadJSON } from "@/lib/storacha/client";
 import {
   buildSubscriptionReceipt,
@@ -47,11 +48,16 @@ export async function requestSubscription(params: {
       passportStreak: passportState.weeklyStreak,
     });
 
+    const { account: clawrenceAccount } = await getClawrenceAccount(
+      params.familyId,
+    );
+
     const policyResult = await evaluateAction({
       familyId: params.familyId,
       amount: inrToPaise(params.monthlyAmount),
       passportLevel: passportState.level,
       isRecurring: true,
+      account: clawrenceAccount,
     });
 
     const decision = policyResult.decision;
@@ -187,6 +193,35 @@ export async function executeApprovedSubscription(params: {
 }): Promise<FlowResult> {
   try {
     assertContractConfigForDemo();
+    const { session: clawrenceSession, account: clawrenceAccount } =
+      await getClawrenceAccount(params.familyId);
+
+    const subscriptionRecipient =
+      (process.env.SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}` | undefined) ||
+      ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+
+    const guardrails = evaluateVincentGuardrails({
+      action: "subscription",
+      amount: params.monthlyAmount,
+      isRecurring: true,
+      recipientAddress: subscriptionRecipient,
+    });
+
+    if (!guardrails.approved) {
+      return {
+        success: false,
+        decision: params.decision as any,
+        requiresApproval: false,
+        guardrail: {
+          decision: "BLOCK",
+          reason: guardrails.reasons[0],
+          source: guardrails.provider,
+        },
+        guardrails,
+        error: guardrails.reasons.join(" "),
+      };
+    }
+
     const litResult = await executeSafeSigning({
       action: "subscription",
       policyDecision: params.decision as any,
@@ -196,6 +231,8 @@ export async function executeApprovedSubscription(params: {
       txData: new Uint8Array([]),
       clawrencePublicKey: params.clawrencePublicKey,
       session: params.session,
+      clawrencePublicKey:
+        clawrenceSession.pkpPublicKey || params.clawrencePublicKey,
     });
 
     if (!litResult.signed) {
@@ -214,24 +251,15 @@ export async function executeApprovedSubscription(params: {
           response: litResult.response,
         },
         clawrence: { preExplanation: params.preExplanation, postExplanation: params.postExplanation },
+        guardrail: {
+          decision: "ALLOW",
+          source: guardrails.provider,
+        },
+        guardrails,
         error: litResult.reason,
       };
     }
 
-    const flowAccount = await getFlowAccount(params.session);
-
-    const flowTx = await fundSubscription(
-      flowAccount,
-      params.familyId,
-      params.teenAddress,
-      params.serviceName,
-      params.monthlyAmount,
-    );
-
-    const amountWei = flowToWei(params.monthlyAmount);
-    const subscriptionRecipient =
-      (process.env.SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}` | undefined) ||
-      ("0x0000000000000000000000000000000000000000" as `0x${string}`);
     if (
       isDemoStrictMode() &&
       subscriptionRecipient === "0x0000000000000000000000000000000000000000"
@@ -241,7 +269,17 @@ export async function executeApprovedSubscription(params: {
       );
     }
     await createSubscriptionSchedule(
-      flowAccount,
+    const flowTx = await fundSubscription(
+      clawrenceAccount,
+      params.familyId,
+      params.teenAddress,
+      params.serviceName,
+      params.monthlyAmount,
+    );
+
+    const amountWei = flowToWei(params.monthlyAmount);
+    const scheduleResult = await createSubscriptionSchedule(
+      clawrenceAccount,
       params.familyId,
       params.teenAddress,
       amountWei,
@@ -252,7 +290,7 @@ export async function executeApprovedSubscription(params: {
     const parsedEvents = await parseTransactionEvents(flowTx.txHash as `0x${string}`);
 
     await recordAction(
-      flowAccount,
+      clawrenceAccount,
       params.familyId,
       params.teenAddress,
       "subscription",
@@ -278,6 +316,10 @@ export async function executeApprovedSubscription(params: {
       postExplanation: params.postExplanation,
       approvalCid: params.approvalCid,
       zamaTxHash: params.zamaTxHash,
+      scheduleTxHash: scheduleResult.txHash,
+      scheduleId: scheduleResult.scheduleId,
+      guardrails,
+      litSignatureResponse: litResult.response,
     });
 
     const storachaReceipt = await storeReceipt(receipt);
@@ -288,9 +330,16 @@ export async function executeApprovedSubscription(params: {
         decision: params.decision,
         flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
         lit: { actionCid: SAFE_EXECUTOR_CID },
+        guardrails,
         zama: { contractAddress: CONTRACTS.policy },
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
         passport: { newLevel: passportAfter.level, leveledUp },
+        schedule: {
+          txHash: scheduleResult.txHash,
+          scheduleId: scheduleResult.scheduleId,
+          label: params.serviceName,
+          recipientAddress: subscriptionRecipient,
+        },
         clawrence: { preExplanation: params.preExplanation },
       },
       {
@@ -337,6 +386,11 @@ export async function executeApprovedSubscription(params: {
         events: parsedEvents.events,
         gasUsed: parsedEvents.gasUsed,
       },
+      guardrail: {
+        decision: "ALLOW",
+        source: guardrails.provider,
+      },
+      guardrails,
       lit: { signed: true, actionCid: SAFE_EXECUTOR_CID, response: litResult.response },
       zama: {
         decision: params.decision as any,
@@ -353,6 +407,12 @@ export async function executeApprovedSubscription(params: {
         oldLevel: params.passportBefore.level,
         newLevel: passportAfter.level,
         leveledUp,
+      },
+      schedule: {
+        txHash: scheduleResult.txHash,
+        scheduleId: scheduleResult.scheduleId,
+        label: params.serviceName,
+        recipientAddress: subscriptionRecipient,
       },
       clawrence: {
         preExplanation: params.preExplanation,

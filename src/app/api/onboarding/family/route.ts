@@ -15,7 +15,7 @@ import {
   updateExecutorOnChain,
 } from "@/lib/flow/access";
 import { fail, mapErrorToCode, ok } from "@/lib/api/response";
-import { assertContractConfigForDemo } from "@/lib/runtime/config";
+import { assertFamilyOnboardingConfigForDemo } from "@/lib/runtime/config";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import type { UserSession } from "@/lib/types";
 import type { FamilyRecord } from "@/lib/types/onboarding";
@@ -44,7 +44,7 @@ function nextFamilyId(guardianAddress: string, teenAddress: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    assertContractConfigForDemo();
+    assertFamilyOnboardingConfigForDemo();
     const body = await req.json();
     const guardianSession = body.guardianSession as UserSession;
     const teenSession = body.teenSession as UserSession;
@@ -76,10 +76,7 @@ export async function POST(req: NextRequest) {
           guardianSession.sessionSigs &&
           existing.familyId
         ) {
-          const guardianAccount = await getPkpAccount(
-            guardianSession.pkpPublicKey,
-            guardianSession.sessionSigs,
-          );
+          const guardianAccount = await getPkpAccount(guardianSession);
 
           try {
             await updateExecutorOnChain({

@@ -28,6 +28,8 @@ interface AuthState {
     role: Role;
     pkpPublicKey: string;
     pkpTokenId: string;
+    pkpAddress?: string;
+    phoneNumber?: string;
     authMethod: any;
     address: string;
   }) => Promise<void>;
@@ -111,29 +113,30 @@ export const useAuthStore = create<AuthState>()(
         const { session, family } = get();
         if (!session || !family) return;
 
-        try {
-          const res = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              role: session.role,
-              pkpPublicKey: session.pkpPublicKey,
-              pkpTokenId: session.pkpTokenId,
-              authMethod: session.authMethod,
-              address: session.address,
-            }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            set({
-              balances: data.balances,
-              passport: data.passport,
-              pendingApprovals: data.pendingApprovals ?? [],
-            });
-          }
-        } catch {
-          /* silent refresh failure */
+        const res = await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: session.role,
+            pkpPublicKey: session.pkpPublicKey,
+            pkpTokenId: session.pkpTokenId,
+            pkpAddress: session.pkpAddress,
+            phoneNumber: session.phoneNumber,
+            authMethod: session.authMethod,
+            address: session.address,
+          }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.error || "Failed to refresh Proof18 session");
         }
+
+        set({
+          balances: data.balances,
+          passport: data.passport,
+          pendingApprovals: data.pendingApprovals ?? [],
+        });
       },
     }),
     {

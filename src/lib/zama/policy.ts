@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createPublicClient, createWalletClient, decodeEventLog, http } from "viem";
+import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants";
@@ -8,6 +8,10 @@ import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 import { getFhevmInstance } from "@/lib/zama/client";
+import {
+  serverDecryptLatestDecision,
+  serverDecryptPolicy,
+} from "@/lib/zama/decrypt";
 import type { PolicyDecision } from "@/lib/types";
 
 function decisionFromUint8(value: number): PolicyDecision {
@@ -26,12 +30,42 @@ function getEvaluatorAccount() {
   return privateKeyToAccount(normalizePrivateKeyEnv(envName, key));
 }
 
+function getPolicyViewerAccount() {
+  const key =
+    process.env.DEPLOYER_PRIVATE_KEY ||
+    process.env.ZAMA_EVALUATOR_PRIVATE_KEY ||
+    process.env.ZAMA_PRIVATE_KEY;
+  if (!key) return null;
+  return privateKeyToAccount(key as `0x${string}`);
+}
+
 function getSepoliaWalletClient() {
   const rpcUrl = SEPOLIA.rpcUrls.default.http[0];
   return createWalletClient({
     chain: SEPOLIA,
     transport: http(rpcUrl),
   });
+}
+
+function computeDecision(params: {
+  amount: number;
+  passportLevel: number;
+  isRecurring: boolean;
+  singleActionCap: number;
+  recurringMonthlyCap: number;
+  trustUnlockThreshold: number;
+  riskFlags: number;
+}): PolicyDecision {
+  if (params.amount <= 0) return "BLOCKED";
+  if (params.riskFlags !== 0) return "BLOCKED";
+
+  const cap = params.isRecurring
+    ? params.recurringMonthlyCap
+    : params.singleActionCap;
+
+  if (params.amount > cap) return "RED";
+  if (params.passportLevel >= params.trustUnlockThreshold) return "GREEN";
+  return "YELLOW";
 }
 
 export async function submitEncryptedPolicy(params: {
@@ -83,18 +117,21 @@ export async function evaluateAction(params: {
   passportLevel: number;
   isRecurring: boolean;
   account?: any;
-}): Promise<{ decision: PolicyDecision; txHash: string }> {
+  requireEncrypted?: boolean; // If true, will throw instead of using heuristic fallback
+}): Promise<{ decision: PolicyDecision; txHash: string; source: "encrypted" | "heuristic" }> {
   assertContractConfigForDemo();
   const account = params.account ?? getEvaluatorAccount();
   if (!account) {
-    if (isDemoStrictMode()) {
+    if (isDemoStrictMode() || params.requireEncrypted) {
       throw new Error(
         "POLICY_UNAVAILABLE:Missing evaluator account for encrypted policy evaluation",
       );
     }
+    console.warn("[Zama] No evaluator account - using heuristic fallback");
     return {
       decision: params.isRecurring ? "YELLOW" : "GREEN",
       txHash: "",
+      source: "heuristic",
     };
   }
 
@@ -113,30 +150,49 @@ export async function evaluateAction(params: {
     ],
   });
 
-  const publicClient = createPublicClient({
-    chain: SEPOLIA,
-    transport: http(SEPOLIA.rpcUrls.default.http[0]),
-  });
-
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
   let decision: PolicyDecision = params.isRecurring ? "YELLOW" : "GREEN";
-  for (const log of receipt.logs) {
+  let source: "encrypted" | "heuristic" = "heuristic";
+  const viewer = getPolicyViewerAccount();
+
+  if (viewer) {
     try {
-      const decoded = decodeEventLog({
-        abi: POLICY_ABI,
-        data: log.data,
-        topics: log.topics,
+      const latestDecision = await serverDecryptLatestDecision({
+        familyId: params.familyId,
+        viewerSigner: viewer,
       });
-      if (decoded.eventName === "PolicyEvaluated") {
-        const raw = Number((decoded.args as any).decision);
-        decision = decisionFromUint8(raw);
-        break;
+
+      decision = decisionFromUint8(latestDecision.decision);
+      source = "encrypted";
+    } catch (latestDecisionError) {
+      console.warn("[Zama] Failed to decrypt latest decision, trying policy fallback:", latestDecisionError);
+      if (params.requireEncrypted) {
+        throw new Error(`POLICY_UNAVAILABLE:Encrypted policy decryption failed: ${latestDecisionError}`);
       }
-    } catch {
-      // ignore
+      try {
+        const policy = await serverDecryptPolicy({
+          familyId: params.familyId,
+          viewerSigner: viewer,
+        });
+
+        decision = computeDecision({
+          amount: params.amount,
+          passportLevel: params.passportLevel,
+          isRecurring: params.isRecurring,
+          singleActionCap: policy.singleActionCap,
+          recurringMonthlyCap: policy.recurringMonthlyCap,
+          trustUnlockThreshold: policy.trustUnlockThreshold,
+          riskFlags: policy.riskFlags,
+        });
+        source = "heuristic";
+        console.warn("[Zama] Using local policy computation as fallback");
+      } catch (policyError) {
+        if (isDemoStrictMode() || params.requireEncrypted) {
+          throw latestDecisionError;
+        }
+        console.warn("[Zama] Using default heuristic - all decryption failed");
+      }
     }
   }
 
-  return { decision, txHash };
+  return { decision, txHash, source };
 }

@@ -15,6 +15,7 @@ export interface ExecutorParams {
   txData: Uint8Array;
   clawrencePublicKey: string;
   session: UserSession;
+  vincentGuardrailsPassed?: boolean;
 }
 
 export interface ExecutorResult {
@@ -23,8 +24,20 @@ export interface ExecutorResult {
   requiresApproval?: boolean;
   response: any;
   signatures?: any;
+  layers?: string[]; // Track which safety layers were applied
 }
 
+/**
+ * Execute safe signing through the Lit Action
+ *
+ * This is Layer 3 of the three-layer safety model:
+ * 1. Zama FHE Policy - Determines GREEN/YELLOW/RED/BLOCKED
+ * 2. Vincent Guardrails - Checks action against AI guardrails
+ * 3. Lit Protocol - Cryptographic signing boundary (this function)
+ *
+ * The Lit Action is pinned to IPFS and cannot be changed - it
+ * enforces the signing rules immutably.
+ */
 export async function executeSafeSigning(
   params: ExecutorParams,
 ): Promise<ExecutorResult> {
@@ -47,6 +60,7 @@ export async function executeSafeSigning(
       txData: params.txData,
       publicKey: params.clawrencePublicKey,
       sigName: "proof18Sig",
+      vincentGuardrailsPassed: params.vincentGuardrailsPassed ?? true, // Default true for backward compat
     },
   });
 
@@ -58,5 +72,6 @@ export async function executeSafeSigning(
     requiresApproval: response.requiresApproval,
     response,
     signatures: result.signatures,
+    layers: response.layers || ["lit-safe-executor"],
   };
 }

@@ -9,8 +9,9 @@ import {
   createSiweMessage,
 } from "@lit-protocol/auth-helpers";
 
+import { getLitClient } from "@/lib/lit/client";
 import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
-import type { Role, UserSession } from "@/lib/types";
+import type { AuthChannel, Role, UserSession } from "@/lib/types";
 
 let mintingAccount: ReturnType<typeof privateKeyToAccount> | null = null;
 
@@ -81,4 +82,116 @@ export async function buildPhoneAuthContext(session: UserSession) {
     authContext,
     authData,
   };
+}
+
+export async function mintPKPWithCustomAuth(
+  authMethod: {
+    authMethodType: number;
+    authMethodId?: string;
+    accessToken: string;
+  },
+  role: Role,
+): Promise<{
+  tokenId: string;
+  publicKey: string;
+  ethAddress: string;
+}> {
+  const client = await getLitClient();
+  const scopes = role === "guardian" ? [1] : [2];
+
+  const result: any = await (client as any).mintWithCustomAuth({
+    signer: getMintingAccount(),
+    authMethod,
+    scopes,
+    addPkpAsPermittedAddress: false,
+    sendPkpToItself: true,
+  });
+
+  return {
+    tokenId: result.pkp.tokenId,
+    publicKey: result.pkp.publicKey,
+    ethAddress: result.pkp.ethAddress,
+  };
+}
+
+export async function mintClawrencePKP(
+  litActionIpfsCid: string,
+): Promise<{
+  tokenId: string;
+  publicKey: string;
+  ethAddress: string;
+}> {
+  const client = await getLitClient();
+
+  const result: any = await (client as any).mintWithCustomAuth({
+    signer: getMintingAccount(),
+    authMethod: {
+      authMethodType: 15,
+      authMethodId: litActionIpfsCid,
+      accessToken: "",
+    },
+    litActionIpfsCid,
+    scopes: [2],
+    addPkpAsPermittedAddress: false,
+    sendPkpToItself: true,
+  });
+
+  return {
+    tokenId: result.pkp.tokenId,
+    publicKey: result.pkp.publicKey,
+    ethAddress: result.pkp.ethAddress,
+  };
+}
+
+export async function mintPKPWithPhoneDemo(
+  phoneNumber: string,
+  role: Role,
+  verificationToken: string,
+): Promise<{
+  tokenId: string;
+  publicKey: string;
+  ethAddress: string;
+  authChannel: AuthChannel;
+}> {
+  const authMethod = {
+    authMethodType: 89,
+    authMethodId: phoneNumber,
+    accessToken: verificationToken,
+  };
+
+  const pkp = await mintPKPWithCustomAuth(authMethod, role);
+  return {
+    ...pkp,
+    authChannel: "phone",
+  };
+}
+
+export function getClawrenceAuthMethod(litActionIpfsCid: string) {
+  return {
+    authMethodType: 15,
+    authMethodId: litActionIpfsCid,
+    accessToken: "",
+  };
+}
+
+export async function getSessionSigs(pkpPublicKey: string, authMethod: any) {
+  const client = await getLitClient();
+
+  const sessionSigs = await (client as any).getSessionSigs({
+    pkpPublicKey,
+    authMethod,
+    chain: "ethereum",
+    resourceAbilityRequests: [
+      {
+        resource: { resource: "*", resourcePrefix: "lit-litaction" },
+        ability: "lit-action-execution",
+      },
+      {
+        resource: { resource: "*", resourcePrefix: "lit-pkp" },
+        ability: "pkp-signing",
+      },
+    ],
+  });
+
+  return sessionSigs;
 }

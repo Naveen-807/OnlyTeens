@@ -24,6 +24,10 @@ export interface StoredReceipt {
   litActionCid: string;
   zamaContractAddress: string;
   clawrenceExplanation: string;
+  guardrailApproved?: boolean;
+  guardrailReasons?: string[];
+  scheduleId?: number;
+  scheduleTxHash?: string;
   timestamp: string;
 }
 
@@ -98,6 +102,10 @@ export function receiptFromFlowResult(
     litActionCid: flowResult.lit?.actionCid || "",
     zamaContractAddress: flowResult.zama?.contractAddress || "",
     clawrenceExplanation: flowResult.clawrence?.preExplanation || "",
+    guardrailApproved: flowResult.guardrails?.approved,
+    guardrailReasons: flowResult.guardrails?.reasons || [],
+    scheduleId: flowResult.schedule?.scheduleId,
+    scheduleTxHash: flowResult.schedule?.txHash,
     timestamp: new Date().toISOString(),
   };
 }

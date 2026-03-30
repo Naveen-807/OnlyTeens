@@ -3,7 +3,11 @@ import "server-only";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { uploadJSON } from "@/lib/storacha/client";
-import type { PolicyDecision, Proof18Receipt } from "@/lib/types";
+import type {
+  GuardrailResult,
+  PolicyDecision,
+  Proof18Receipt,
+} from "@/lib/types";
 
 export async function storeReceipt(
   receipt: Proof18Receipt,
@@ -23,12 +27,18 @@ export function buildSavingsReceipt(params: {
   guardian: string;
   amount: string;
   decision: PolicyDecision;
+  isRecurring: boolean;
+  interval?: "weekly" | "monthly";
   flowTxHash: string;
   passportBefore: number;
   passportAfter: number;
   totalActions: number;
   preExplanation: string;
   postExplanation: string;
+  litSignatureResponse?: any;
+  guardrails?: GuardrailResult;
+  scheduleTxHash?: string;
+  scheduleId?: number;
   celebration?: string;
   zamaTxHash?: string;
 }): Proof18Receipt {
@@ -39,21 +49,28 @@ export function buildSavingsReceipt(params: {
     teen: params.teen,
     guardian: params.guardian,
     action: {
-      description: `Savings deposit of ${params.amount} FLOW`,
+      description: `Savings deposit of ${params.amount} FLOW${params.isRecurring ? ` (${params.interval || "weekly"})` : ""}`,
       amount: params.amount,
       currency: "FLOW",
-      isRecurring: false,
+      isRecurring: params.isRecurring,
     },
     policy: {
       decision: params.decision,
       contractAddress: CONTRACTS.policy,
       evaluationTxHash: params.zamaTxHash,
     },
+    guardrails: params.guardrails,
     execution: {
       litActionCid: SAFE_EXECUTOR_CID,
       litSigned: true,
+      litSignatureResponse: params.litSignatureResponse,
       flowTxHash: params.flowTxHash,
       flowExplorerUrl: `https://evm-testnet.flowscan.io/tx/${params.flowTxHash}`,
+      scheduleTxHash: params.scheduleTxHash,
+      scheduleId: params.scheduleId,
+      scheduleLabel: params.isRecurring
+        ? `auto-save-${params.interval || "weekly"}`
+        : undefined,
     },
     passport: {
       levelBefore: params.passportBefore,
@@ -85,6 +102,10 @@ export function buildSubscriptionReceipt(params: {
   totalActions: number;
   preExplanation: string;
   postExplanation: string;
+  litSignatureResponse?: any;
+  guardrails?: GuardrailResult;
+  scheduleTxHash?: string;
+  scheduleId?: number;
   celebration?: string;
   approvalCid?: string;
   zamaTxHash?: string;
@@ -107,11 +128,16 @@ export function buildSubscriptionReceipt(params: {
       contractAddress: CONTRACTS.policy,
       evaluationTxHash: params.zamaTxHash,
     },
+    guardrails: params.guardrails,
     execution: {
       litActionCid: SAFE_EXECUTOR_CID,
       litSigned: true,
+      litSignatureResponse: params.litSignatureResponse,
       flowTxHash: params.flowTxHash,
       flowExplorerUrl: `https://evm-testnet.flowscan.io/tx/${params.flowTxHash}`,
+      scheduleTxHash: params.scheduleTxHash,
+      scheduleId: params.scheduleId,
+      scheduleLabel: params.serviceName,
     },
     passport: {
       levelBefore: params.passportBefore,

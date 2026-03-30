@@ -1,5 +1,6 @@
 "use client";
 
+import { FamilyOnboarding } from "@/components/FamilyOnboarding";
 import { PermissionsProof } from "@/components/PermissionsProof";
 import { useAuthStore } from "@/store/authStore";
 
@@ -8,7 +9,11 @@ export default function GuardianFamilyPage() {
   const safeExecutorCid = process.env.NEXT_PUBLIC_SAFE_EXECUTOR_CID || "";
 
   if (!session || !family) {
-    return <div className="text-sm text-gray-600">No session yet.</div>;
+    return (
+      <div className="mx-auto max-w-md p-4">
+        <FamilyOnboarding />
+      </div>
+    );
   }
 
   return (

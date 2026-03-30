@@ -18,17 +18,24 @@ export function GuardianPolicySetup({
   const [riskFlags, setRiskFlags] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await onSubmit({
-      singleActionCap: singleCap,
-      recurringMonthlyCap: recurringCap,
-      trustUnlockThreshold: trustThreshold,
-      riskFlags,
-    });
-    setSubmitting(false);
-    setSubmitted(true);
+    setError(null);
+    try {
+      await onSubmit({
+        singleActionCap: singleCap,
+        recurringMonthlyCap: recurringCap,
+        trustUnlockThreshold: trustThreshold,
+        riskFlags,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.message || "Failed to encrypt and store policy");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -150,6 +157,12 @@ export function GuardianPolicySetup({
         </p>
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {error}
+        </div>
+      ) : null}
+
       <button
         onClick={handleSubmit}
         disabled={submitting}
@@ -160,4 +173,3 @@ export function GuardianPolicySetup({
     </div>
   );
 }
-

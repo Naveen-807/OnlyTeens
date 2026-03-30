@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { AuthEntry } from "@/components/AuthEntry";
 import { useAuthStore } from "@/store/authStore";
 
 export default function GuardianLayout({
@@ -29,8 +30,8 @@ export default function GuardianLayout({
       </header>
 
       {!session ? (
-        <div className="mx-auto max-w-3xl p-6 text-sm text-gray-600">
-          No session yet. For the hackathon MVP, POST to `api/auth/guardian` to mint a PKP and store the session in `useAuthStore`.
+        <div className="mx-auto max-w-3xl p-6">
+          <AuthEntry role="guardian" />
         </div>
       ) : null}
 
@@ -38,4 +39,3 @@ export default function GuardianLayout({
     </div>
   );
 }
-

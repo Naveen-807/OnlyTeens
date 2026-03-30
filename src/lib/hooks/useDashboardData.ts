@@ -28,6 +28,7 @@ export function useDashboardData(): DashboardData {
     }
     setIsLoading(true);
     setError(null);
+    setReceipts([]);
 
     try {
       // Refresh auth store (balances, passport, approvals)
@@ -40,9 +41,11 @@ export function useDashboardData(): DashboardData {
       const data = await res.json();
       if (data.success) {
         setReceipts(data.receipts);
+      } else {
+        setError(data.error || "Failed to load receipts");
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || "Failed to load dashboard data");
     } finally {
       setIsLoading(false);
     }

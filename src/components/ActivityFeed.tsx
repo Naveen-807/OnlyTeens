@@ -21,6 +21,11 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold">Activity</h2>
+      {items.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-gray-500">
+          No activity yet. Transactions, approvals, and passport updates will appear here.
+        </div>
+      ) : null}
       {items.map((item) => (
         <div key={item.id} className="space-y-2 rounded-lg border p-4">
           <div className="flex items-center justify-between">
@@ -67,4 +72,3 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
     </div>
   );
 }
-

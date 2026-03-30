@@ -1,8 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { Bot, Send, Sparkles, AlertCircle } from "lucide-react";
 
 import type { ClawrenceIntent, UserSession } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -35,12 +40,13 @@ export function ClawrenceChat({
       id: "welcome",
       role: "clawrence",
       content:
-        "Hey! I'm Clawrence, your financial guide.\n\nTry: “save ₹500 weekly” or “subscribe to Spotify for ₹119”.",
+        'Hey! I\'m Clawrence, your financial guide.\n\nTry: "save ₹500 weekly" or "subscribe to Spotify for ₹119".',
       timestamp: new Date().toISOString(),
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const lastPreview = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -50,6 +56,12 @@ export function ClawrenceChat({
   }, [messages]);
 
   const push = (msg: Message) => setMessages((prev) => [...prev, msg]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -161,75 +173,110 @@ export function ClawrenceChat({
   };
 
   return (
-    <div className="mx-auto flex h-[600px] max-w-md flex-col">
-      <div className="flex items-center gap-3 rounded-t-xl bg-indigo-600 p-4 text-white">
-        <span className="text-2xl">🤖</span>
+    <div className="mx-auto flex h-[calc(100vh-12rem)] max-w-2xl flex-col rounded-2xl border border-border/30 bg-card/90 backdrop-blur-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-border/30 bg-gradient-to-r from-primary/10 via-card to-card p-4">
+        <div className="rounded-xl bg-primary/20 p-2.5 border border-primary/30">
+          <Bot className="h-6 w-6 text-primary" />
+        </div>
         <div>
-          <h2 className="font-bold">Clawrence</h2>
-          <p className="text-xs opacity-80">Your financial guide</p>
+          <h2 className="font-bold text-gold-gradient">Clawrence</h2>
+          <p className="text-xs text-muted-foreground">Your AI financial guide</p>
+        </div>
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-emerald-400">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          Online
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === "teen" ? "justify-end" : "justify-start"}`}
-          >
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+        <div className="space-y-4">
+          {messages.map((msg) => (
             <div
-              className={`max-w-[80%] whitespace-pre-wrap rounded-lg p-3 text-sm ${
-                msg.role === "teen"
-                  ? "bg-indigo-600 text-white"
-                  : msg.role === "system"
-                    ? "bg-red-50 text-red-800"
-                    : "bg-white shadow-sm"
-              }`}
+              key={msg.id}
+              className={cn("flex", msg.role === "teen" ? "justify-end" : "justify-start")}
             >
-              {msg.content}
-              {msg.actionPreview ? (
-                <div className="mt-3 rounded bg-indigo-50 p-2 text-xs text-indigo-900">
-                  <div className="font-semibold">Preview ready</div>
-                  <div className="mt-1">
-                    Confirm to run: <code>{msg.intent?.description}</code>
+              <div
+                className={cn(
+                  "max-w-[85%] whitespace-pre-wrap rounded-2xl p-4 text-sm",
+                  msg.role === "teen"
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : msg.role === "system"
+                      ? "bg-rose-950/60 border border-rose-500/30 text-rose-400"
+                      : "bg-secondary/80 border border-border/30 rounded-bl-md"
+                )}
+              >
+                {msg.role === "clawrence" && (
+                  <div className="flex items-center gap-2 mb-2 text-xs text-primary">
+                    <Sparkles className="h-3 w-3" />
+                    Clawrence
                   </div>
-                  <button
-                    onClick={confirmPreview}
-                    disabled={loading}
-                    className="mt-2 w-full rounded bg-indigo-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                  >
-                    Confirm
-                  </button>
+                )}
+                {msg.content}
+                {msg.actionPreview && (
+                  <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 p-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-primary mb-2">
+                      <Sparkles className="h-3 w-3" />
+                      Action Ready
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Confirm to execute: <code className="text-primary">{msg.intent?.description}</code>
+                    </p>
+                    <Button
+                      onClick={confirmPreview}
+                      disabled={loading}
+                      size="sm"
+                      className="w-full"
+                    >
+                      {loading ? "Processing..." : "Confirm & Execute"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl rounded-bl-md bg-secondary/80 border border-border/30 p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                  Clawrence is thinking...
                 </div>
-              ) : null}
+              </div>
             </div>
-          </div>
-        ))}
-        {loading ? (
-          <div className="flex justify-start">
-            <div className="rounded-lg bg-white p-3 shadow-sm">
-              <span className="text-sm text-gray-400">Clawrence is thinking...</span>
-            </div>
-          </div>
-        ) : null}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
 
-      <div className="flex gap-2 border-t bg-white p-3">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Save ₹500 weekly..."
-          className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-        />
-        <button
-          onClick={sendMessage}
-          disabled={loading}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          Send
-        </button>
+      {/* Input */}
+      <div className="border-t border-border/30 bg-card/50 p-4">
+        <div className="flex gap-3">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+            placeholder="Save ₹500 weekly..."
+            className="flex-1 bg-background/50"
+            disabled={loading}
+          />
+          <Button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            size="icon"
+            className="shrink-0"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground text-center">
+          Try: "save 100 FLOW" or "subscribe to Netflix for 15 FLOW"
+        </p>
       </div>
     </div>
   );
 }
-

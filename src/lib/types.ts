@@ -1,5 +1,7 @@
 // ═══ Roles ═══
 export type Role = "guardian" | "teen" | "executor";
+export type AuthChannel = "google" | "phone" | "phone-otp" | "passkey" | "demo";
+export type GuardrailDecision = "ALLOW" | "BLOCK" | "REVIEW";
 
 // ═══ Policy Decisions ═══
 export type PolicyDecision = "GREEN" | "YELLOW" | "RED" | "BLOCKED";
@@ -42,6 +44,9 @@ export interface UserSession {
   authProvider?: "twilio-verify";
   sessionSigs: any;
   authMethod: any;
+  authChannel?: AuthChannel;
+  phoneNumber?: string;
+  verificationId?: string;
 }
 
 // ═══ Balances ═══
@@ -112,6 +117,7 @@ export interface Proof18Receipt {
     contractAddress: string;
     evaluationTxHash?: string;
   };
+  guardrails?: GuardrailResult;
   execution: {
     litActionCid: string;
     litSigned: boolean;
@@ -120,6 +126,9 @@ export interface Proof18Receipt {
     flowExplorerUrl: string;
     flowBlockNumber?: number;
     gasUsed?: string;
+    scheduleTxHash?: string;
+    scheduleId?: number;
+    scheduleLabel?: string;
   };
   passport: {
     levelBefore: number;
@@ -155,6 +164,12 @@ export interface FlowResult {
   success: boolean;
   decision: PolicyDecision;
   requiresApproval: boolean;
+  guardrail?: {
+    decision: GuardrailDecision;
+    reason?: string;
+    source?: string;
+  };
+  guardrails?: GuardrailResult;
   approvalRequestId?: string;
   flow?: {
     txHash: string;
@@ -171,6 +186,7 @@ export interface FlowResult {
     decision: PolicyDecision;
     contractAddress: string;
     evaluationTxHash: string;
+    source?: "encrypted" | "heuristic"; // Track if real encrypted eval or fallback
   };
   storacha?: {
     receiptCid: string;
@@ -184,12 +200,49 @@ export interface FlowResult {
     newLevel: number;
     leveledUp: boolean;
   };
+  schedule?: {
+    txHash: string;
+    scheduleId: number;
+    label: string;
+    interval?: "weekly" | "monthly";
+    recipientAddress?: string;
+  };
   clawrence?: {
     preExplanation: string;
     postExplanation: string;
     celebration?: string;
   };
   error?: string;
+}
+
+export interface GuardrailResult {
+  approved: boolean;
+  provider: "vincent-local";
+  version: string;
+  chain: string;
+  action: ActionType;
+  recipientAddress: string;
+  reasons: string[];
+  checks: {
+    allowedActionType: boolean;
+    allowedChain: boolean;
+    allowedRecipient: boolean;
+    maxSingleTransfer: boolean;
+    recurringWithinLimit: boolean;
+  };
+}
+
+export interface PermissionsProofState {
+  zamaDecision: PolicyDecision;
+  guardrailDecision?: GuardrailDecision;
+  guardrailReason?: string;
+  litAuthorized: boolean;
+  litActionCid: string;
+  flowTxHash?: string;
+  flowExplorerUrl?: string;
+  storachaCid?: string;
+  storachaUrl?: string;
+  evaluationTxHash?: string;
 }
 
 // ═══ Clawrence Intent ═══

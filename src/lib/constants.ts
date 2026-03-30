@@ -132,11 +132,14 @@ export const PASSPORT_ABI = parseAbi([
 
 export const POLICY_ABI = parseAbi([
   "function setPolicy(bytes32 familyId, uint256 encSingleCap, uint256 encRecurringCap, uint256 encTrustThreshold, uint256 encRiskFlags, bytes inputProof) external",
-  "function evaluateAction(bytes32 familyId, uint256 amount, uint8 currentPassportLevel, bool isRecurring) external returns (uint8)",
-  "function getGuardianPolicyView(bytes32 familyId) external view returns (uint256 singleCap, uint256 recurringCap, uint256 trustThreshold)",
+  "function evaluateAction(bytes32 familyId, uint256 amount, uint8 currentPassportLevel, bool isRecurring) external",
+  "function getGuardianPolicyView(bytes32 familyId) external view returns (uint256 singleCap, uint256 recurringCap, uint256 trustThreshold, uint256 riskFlags)",
+  "function getServerPolicyView(bytes32 familyId) external view returns (uint256 singleCap, uint256 recurringCap, uint256 trustThreshold, uint256 riskFlags)",
+  "function getGuardianLatestDecisionView(bytes32 familyId) external view returns (uint256 decisionHandle, uint256 amount, bool isRecurring, address actor)",
+  "function getServerLatestDecisionView(bytes32 familyId) external view returns (uint256 decisionHandle, uint256 amount, bool isRecurring, address actor)",
   "function isPolicySet(bytes32 familyId) external view returns (bool)",
   "event PolicySet(bytes32 indexed familyId, address guardian, uint256 timestamp)",
-  "event PolicyEvaluated(bytes32 indexed familyId, address indexed teen, string actionType, uint256 amount, uint8 decision, uint256 timestamp)",
+  "event PolicyEvaluated(bytes32 indexed familyId, address indexed actor, address indexed teen, string actionType, uint256 amount, bool isRecurring, uint256 timestamp)",
 ]);
 
 // ═══ Helper ═══

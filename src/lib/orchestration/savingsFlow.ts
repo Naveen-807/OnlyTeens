@@ -6,8 +6,9 @@ import { getPassport, recordAction } from "@/lib/flow/passport";
 import { depositSavings } from "@/lib/flow/vault";
 import { preActionExplanation, postDecisionExplanation, celebrationMessage } from "@/lib/clawrence/engine";
 import { executeSafeSigning } from "@/lib/lit/executor";
-import { getFlowAccount } from "@/lib/lit/viemAccount";
+import { getClawrenceAccount } from "@/lib/lit/executorSession";
 import { evaluateAction } from "@/lib/zama/policy";
+import { evaluateVincentGuardrails } from "@/lib/vincent/policy";
 import {
   buildSavingsReceipt,
   storePassportSnapshot,
@@ -25,7 +26,7 @@ export async function executeSavingsFlow(params: {
   teenAddress: `0x${string}`;
   guardianAddress: string;
   teenName: string;
-  amount: string; // FLOW
+  amount: string;
   isRecurring: boolean;
   interval: "weekly" | "monthly";
   clawrencePublicKey: string;
@@ -46,11 +47,16 @@ export async function executeSavingsFlow(params: {
       passportStreak: passportBefore.weeklyStreak,
     });
 
+    const { session: clawrenceSession, account: clawrenceAccount } = await getClawrenceAccount(
+      params.familyId,
+    );
+
     const policyResult = await evaluateAction({
       familyId: params.familyId,
       amount: inrToPaise(params.amount),
       passportLevel: passportBefore.level,
-      isRecurring: false,
+      isRecurring: params.isRecurring,
+      account: clawrenceAccount,
     });
 
     const decision = policyResult.decision;
@@ -65,6 +71,29 @@ export async function executeSavingsFlow(params: {
       passportLevel: passportBefore.level,
     });
 
+    const guardrails = evaluateVincentGuardrails({
+      action: "savings",
+      amount: params.amount,
+      isRecurring: params.isRecurring,
+      recipientAddress: CONTRACTS.vault,
+    });
+
+    if (!guardrails.approved) {
+      return {
+        success: false,
+        decision,
+        requiresApproval: false,
+        guardrail: {
+          decision: "BLOCK",
+          reason: guardrails.reasons[0],
+          source: guardrails.provider,
+        },
+        guardrails,
+        clawrence: { preExplanation, postExplanation },
+        error: guardrails.reasons.join(" "),
+      };
+    }
+
     const litResult = await executeSafeSigning({
       action: "savings",
       policyDecision: decision,
@@ -72,7 +101,7 @@ export async function executeSavingsFlow(params: {
       amount: params.amount,
       familyId: params.familyId,
       txData: new Uint8Array([]),
-      clawrencePublicKey: params.clawrencePublicKey,
+      clawrencePublicKey: clawrenceSession.pkpPublicKey || params.clawrencePublicKey,
       session: params.session,
     });
 
@@ -86,37 +115,50 @@ export async function executeSavingsFlow(params: {
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: policyResult.txHash || "",
         },
+        guardrail: {
+          decision: "ALLOW",
+          source: guardrails.provider,
+        },
+        guardrails,
         lit: { signed: false, actionCid: SAFE_EXECUTOR_CID, response: litResult.response },
         clawrence: { preExplanation, postExplanation },
         error: litResult.reason,
       };
     }
 
-    const flowAccount = await getFlowAccount(params.session);
-
     const flowTx = await depositSavings(
-      flowAccount,
+      clawrenceAccount,
       params.familyId,
       params.teenAddress,
       params.amount,
     );
 
+    let scheduleResult:
+      | { txHash: string; scheduleId: number; label: string; interval?: "weekly" | "monthly" }
+      | undefined;
+
     if (params.isRecurring) {
       const amountWei = flowToWei(params.amount);
-      await createSavingsSchedule(
-        flowAccount,
+      const createdSchedule = await createSavingsSchedule(
+        clawrenceAccount,
         params.familyId,
         params.teenAddress,
         amountWei,
         `auto-save-${params.interval}`,
         params.interval,
       );
+      scheduleResult = {
+        txHash: createdSchedule.txHash,
+        scheduleId: createdSchedule.scheduleId,
+        label: `auto-save-${params.interval}`,
+        interval: params.interval,
+      };
     }
 
     const parsedEvents = await parseTransactionEvents(flowTx.txHash as `0x${string}`);
 
     await recordAction(
-      flowAccount,
+      clawrenceAccount,
       params.familyId,
       params.teenAddress,
       "savings",
@@ -132,26 +174,33 @@ export async function executeSavingsFlow(params: {
       guardian: params.guardianAddress,
       amount: params.amount,
       decision,
+      isRecurring: params.isRecurring,
+      interval: params.interval,
       flowTxHash: flowTx.txHash,
       passportBefore: passportBefore.level,
       passportAfter: passportAfter.level,
       totalActions: passportAfter.totalActions,
       preExplanation,
       postExplanation,
+      litSignatureResponse: litResult.response,
+      guardrails,
+      scheduleTxHash: scheduleResult?.txHash,
+      scheduleId: scheduleResult?.scheduleId,
       zamaTxHash: policyResult.txHash || undefined,
     });
 
     const storachaReceipt = await storeReceipt(receipt);
 
-    // ── Store receipt locally for dashboard UI ──
     const localReceipt = receiptFromFlowResult(
       {
         decision,
         flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
         lit: { actionCid: SAFE_EXECUTOR_CID },
+        guardrails,
         zama: { contractAddress: CONTRACTS.policy },
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
         passport: { newLevel: passportAfter.level, leveledUp },
+        schedule: scheduleResult,
         clawrence: { preExplanation },
       },
       {
@@ -160,7 +209,7 @@ export async function executeSavingsFlow(params: {
         type: "savings",
         description: `Save ${params.amount} FLOW ${params.isRecurring ? params.interval : "once"}`,
         amount: params.amount,
-      }
+      },
     );
     addReceipt(localReceipt);
 
@@ -203,10 +252,16 @@ export async function executeSavingsFlow(params: {
         actionCid: SAFE_EXECUTOR_CID,
         response: litResult.response,
       },
+      guardrail: {
+        decision: "ALLOW",
+        source: guardrails.provider,
+      },
+      guardrails,
       zama: {
         decision,
         contractAddress: CONTRACTS.policy,
         evaluationTxHash: policyResult.txHash || "",
+        source: policyResult.source,
       },
       storacha: {
         receiptCid: storachaReceipt.cid,
@@ -219,6 +274,7 @@ export async function executeSavingsFlow(params: {
         newLevel: passportAfter.level,
         leveledUp,
       },
+      schedule: scheduleResult,
       clawrence: {
         preExplanation,
         postExplanation,

@@ -8,6 +8,8 @@ import type { ApprovalRequest } from "@/lib/types";
 const DATA_DIR = path.join(process.cwd(), "data");
 const APPROVALS_FILE = path.join(DATA_DIR, "approvals.json");
 
+// Hackathon-only persistence: this keeps guardian approvals durable across
+// process restarts, but it is not a production datastore.
 function ensureFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(APPROVALS_FILE))

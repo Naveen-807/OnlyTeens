@@ -27,6 +27,8 @@ export interface StoredReceipt {
   timestamp: string;
 }
 
+// Hackathon-only persistence: this survives restarts for demo continuity, but
+// it should not be treated as durable production storage.
 function ensureFile() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(RECEIPTS_FILE))

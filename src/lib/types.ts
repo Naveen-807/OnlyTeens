@@ -35,7 +35,11 @@ export interface UserSession {
   address: string;
   pkpPublicKey: string;
   pkpTokenId: string;
+  pkpAddress?: string;
   familyId: string;
+  phoneNumber?: string;
+  verificationSid?: string;
+  authProvider?: "twilio-verify";
   sessionSigs: any;
   authMethod: any;
 }

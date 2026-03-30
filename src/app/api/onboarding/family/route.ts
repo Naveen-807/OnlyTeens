@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { getPkpAccount } from "@/lib/lit/viemAccount";
+import { mintClawrencePKP } from "@/lib/lit/auth";
 import {
   generateFamilyId,
   getFamilyByGuardian,
   loadFamilies,
   saveFamily,
 } from "@/lib/onboarding/familyService";
-import { createPassportOnChain, registerFamilyOnChain } from "@/lib/flow/access";
+import {
+  createPassportOnChain,
+  registerFamilyOnChain,
+  updateExecutorOnChain,
+} from "@/lib/flow/access";
 import { fail, mapErrorToCode, ok } from "@/lib/api/response";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
@@ -56,10 +62,45 @@ export async function POST(req: NextRequest) {
 
     const existing = getFamilyByGuardian(guardianSession.address);
     if (existing) {
+      if (existing.clawrenceAddress === guardianSession.address) {
+        const litActionCid = existing.litActionCid || SAFE_EXECUTOR_CID || "";
+        const clawrencePkp = await mintClawrencePKP(litActionCid);
+        existing.clawrenceAddress = clawrencePkp.ethAddress;
+        existing.clawrencePkpPublicKey = clawrencePkp.publicKey;
+        existing.clawrencePkpTokenId = clawrencePkp.tokenId;
+        existing.litActionCid = litActionCid;
+        saveFamily(existing);
+
+        if (
+          nonZeroContractsConfigured() &&
+          guardianSession.sessionSigs &&
+          existing.familyId
+        ) {
+          const guardianAccount = await getPkpAccount(
+            guardianSession.pkpPublicKey,
+            guardianSession.sessionSigs,
+          );
+
+          try {
+            await updateExecutorOnChain({
+              guardianAccount,
+              familyId: toAddress(existing.familyId),
+              executorAddress: toAddress(existing.clawrenceAddress),
+            });
+          } catch (error: any) {
+            if (isDemoStrictMode()) {
+              throw error;
+            }
+          }
+        }
+      }
+
       return ok({ family: existing, reused: true });
     }
 
     const familyId = nextFamilyId(guardianSession.address, teenSession.address);
+    const litActionCid = body.litActionCid || SAFE_EXECUTOR_CID || "";
+    const clawrencePkp = await mintClawrencePKP(litActionCid);
 
     const family: FamilyRecord = {
       familyId,
@@ -69,11 +110,10 @@ export async function POST(req: NextRequest) {
       teenAddress: teenSession.address,
       teenPkpPublicKey: teenSession.pkpPublicKey,
       teenPkpTokenId: teenSession.pkpTokenId,
-      clawrenceAddress:
-        guardianSession.pkpAddress || guardianSession.address,
-      clawrencePkpPublicKey: guardianSession.pkpPublicKey,
-      clawrencePkpTokenId: guardianSession.pkpTokenId,
-      litActionCid: body.litActionCid || SAFE_EXECUTOR_CID || "",
+      clawrenceAddress: clawrencePkp.ethAddress,
+      clawrencePkpPublicKey: clawrencePkp.publicKey,
+      clawrencePkpTokenId: clawrencePkp.tokenId,
+      litActionCid,
       accessContract: CONTRACTS.access,
       vaultContract: CONTRACTS.vault,
       schedulerContract: CONTRACTS.scheduler,

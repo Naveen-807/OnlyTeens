@@ -40,6 +40,27 @@ export async function registerFamilyOnChain(params: {
   };
 }
 
+export async function updateExecutorOnChain(params: {
+  guardianAccount: any;
+  familyId: `0x${string}`;
+  executorAddress: `0x${string}`;
+}): Promise<{ txHash: string; explorerUrl: string }> {
+  ensureConfiguredContracts();
+
+  const txHash = await flowWalletClient.writeContract({
+    account: params.guardianAccount,
+    address: CONTRACTS.access,
+    abi: ACCESS_ABI,
+    functionName: "updateExecutor",
+    args: [params.familyId, params.executorAddress],
+  });
+
+  return {
+    txHash,
+    explorerUrl: `https://evm-testnet.flowscan.io/tx/${txHash}`,
+  };
+}
+
 export async function createPassportOnChain(params: {
   familyId: `0x${string}`;
   teenAddress: `0x${string}`;
@@ -60,4 +81,3 @@ export async function createPassportOnChain(params: {
     explorerUrl: `https://evm-testnet.flowscan.io/tx/${txHash}`,
   };
 }
-

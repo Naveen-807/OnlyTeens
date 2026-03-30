@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
           phoneNumber,
           role,
           familyId: body.familyId ? String(body.familyId) : undefined,
+          deliveryMode: "twilio",
         });
 
         return NextResponse.json({
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       phoneNumber,
       role,
       familyId: body.familyId ? String(body.familyId) : undefined,
+      deliveryMode: "demo",
     });
 
     return NextResponse.json({

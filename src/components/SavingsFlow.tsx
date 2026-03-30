@@ -97,8 +97,32 @@ export function SavingsFlow({
       {result ? (
         <div className="space-y-2 rounded-lg border p-4 text-sm">
           <div className="font-semibold">Result</div>
-          <div>Success: {String(result.success)}</div>
-          <div>Decision: {result.decision}</div>
+          <div
+            className={`rounded-lg p-3 ${
+              result.success
+                ? "bg-green-50 text-green-900"
+                : result.requiresApproval
+                  ? "bg-amber-50 text-amber-900"
+                  : "bg-red-50 text-red-900"
+            }`}
+          >
+            <div className="font-medium">
+              {result.success
+                ? "Savings executed on Flow"
+                : result.requiresApproval
+                  ? "Waiting for guardian approval"
+                  : "Savings flow failed"}
+            </div>
+            <div className="mt-1 text-xs opacity-80">
+              Decision: {result.decision}
+              {result.zama?.evaluationTxHash ? ` • Zama tx ${result.zama.evaluationTxHash}` : ""}
+            </div>
+          </div>
+          {result.approvalRequestId ? (
+            <div className="rounded bg-amber-100 p-2 text-xs">
+              Approval request id: <code>{result.approvalRequestId}</code>
+            </div>
+          ) : null}
           {result.flow?.txHash ? (
             <a
               className="text-blue-600 hover:underline"
@@ -128,4 +152,3 @@ export function SavingsFlow({
     </div>
   );
 }
-

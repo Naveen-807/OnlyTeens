@@ -6,7 +6,7 @@ import { getPassport, recordAction } from "@/lib/flow/passport";
 import { depositSavings } from "@/lib/flow/vault";
 import { preActionExplanation, postDecisionExplanation, celebrationMessage } from "@/lib/clawrence/engine";
 import { executeSafeSigning } from "@/lib/lit/executor";
-import { getPkpAccount } from "@/lib/lit/viemAccount";
+import { getFlowAccount } from "@/lib/lit/viemAccount";
 import { evaluateAction } from "@/lib/zama/policy";
 import {
   buildSavingsReceipt,
@@ -73,7 +73,7 @@ export async function executeSavingsFlow(params: {
       familyId: params.familyId,
       txData: new Uint8Array([]),
       clawrencePublicKey: params.clawrencePublicKey,
-      sessionSigs: params.session.sessionSigs,
+      session: params.session,
     });
 
     if (!litResult.signed) {
@@ -81,19 +81,21 @@ export async function executeSavingsFlow(params: {
         success: false,
         decision,
         requiresApproval: litResult.requiresApproval || false,
+        zama: {
+          decision,
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: policyResult.txHash || "",
+        },
         lit: { signed: false, actionCid: SAFE_EXECUTOR_CID, response: litResult.response },
         clawrence: { preExplanation, postExplanation },
         error: litResult.reason,
       };
     }
 
-    const pkpAccount = await getPkpAccount(
-      params.session.pkpPublicKey,
-      params.session.sessionSigs,
-    );
+    const flowAccount = await getFlowAccount(params.session);
 
     const flowTx = await depositSavings(
-      pkpAccount,
+      flowAccount,
       params.familyId,
       params.teenAddress,
       params.amount,
@@ -102,7 +104,7 @@ export async function executeSavingsFlow(params: {
     if (params.isRecurring) {
       const amountWei = flowToWei(params.amount);
       await createSavingsSchedule(
-        pkpAccount,
+        flowAccount,
         params.familyId,
         params.teenAddress,
         amountWei,
@@ -114,7 +116,7 @@ export async function executeSavingsFlow(params: {
     const parsedEvents = await parseTransactionEvents(flowTx.txHash as `0x${string}`);
 
     await recordAction(
-      pkpAccount,
+      flowAccount,
       params.familyId,
       params.teenAddress,
       "savings",

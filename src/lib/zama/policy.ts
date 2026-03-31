@@ -6,6 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
+import { assertLiveMode } from "@/lib/runtime/liveMode";
 import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 import { getFhevmInstance } from "@/lib/zama/client";
 import {
@@ -120,6 +121,7 @@ export async function submitEncryptedPolicy(params: {
 
 export async function evaluateAction(params: {
   familyId: `0x${string}` | string;
+  teenAddress: `0x${string}` | string;
   amount: number;
   passportLevel: number;
   isRecurring: boolean;
@@ -128,6 +130,10 @@ export async function evaluateAction(params: {
 }): Promise<{ decision: PolicyDecision; txHash: string; source: "encrypted" | "heuristic" }> {
   assertContractConfigForDemo();
   const account = params.account ?? getEvaluatorAccount();
+  assertLiveMode(
+    Boolean(account),
+    "POLICY_UNAVAILABLE:Missing evaluator account for encrypted policy evaluation",
+  );
   if (!account) {
     if (isDemoStrictMode() || params.requireEncrypted) {
       throw new Error(
@@ -151,6 +157,7 @@ export async function evaluateAction(params: {
     functionName: "evaluateAction",
     args: [
       params.familyId as `0x${string}`,
+      params.teenAddress as `0x${string}`,
       BigInt(params.amount),
       params.passportLevel,
       params.isRecurring,
@@ -172,6 +179,10 @@ export async function evaluateAction(params: {
       source = "encrypted";
     } catch (latestDecisionError) {
       console.warn("[Zama] Failed to decrypt latest decision, trying policy fallback:", latestDecisionError);
+      assertLiveMode(
+        false,
+        `POLICY_UNAVAILABLE:Encrypted policy decryption failed: ${String(latestDecisionError)}`,
+      );
       if (params.requireEncrypted) {
         throw new Error(`POLICY_UNAVAILABLE:Encrypted policy decryption failed: ${latestDecisionError}`);
       }
@@ -193,6 +204,10 @@ export async function evaluateAction(params: {
         source = "heuristic";
         console.warn("[Zama] Using local policy computation as fallback");
       } catch (policyError) {
+        assertLiveMode(
+          false,
+          `POLICY_UNAVAILABLE:Policy decryption failed: ${String(policyError)}`,
+        );
         if (isDemoStrictMode() || params.requireEncrypted) {
           throw latestDecisionError;
         }

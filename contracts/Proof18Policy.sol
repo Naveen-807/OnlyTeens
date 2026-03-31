@@ -29,6 +29,7 @@ contract Proof18Policy is ZamaEthereumConfig {
     mapping(bytes32 => uint256) private latestDecisionAmounts;
     mapping(bytes32 => bool) private latestDecisionRecurring;
     mapping(bytes32 => address) private latestDecisionActors;
+    mapping(bytes32 => address) private latestDecisionTeens;
     mapping(bytes32 => bool) private latestDecisionInitialized;
 
     event PolicySet(bytes32 indexed familyId, address guardian, uint256 timestamp);
@@ -98,12 +99,14 @@ contract Proof18Policy is ZamaEthereumConfig {
 
     function evaluateAction(
         bytes32 familyId,
+        address teen,
         uint256 amount,
         uint8 currentPassportLevel,
         bool isRecurring
     ) external {
         FamilyPolicy storage p = policies[familyId];
         require(p.initialized, "No policy");
+        require(access.isTeen(familyId, teen), "Invalid teen");
         require(
             access.isTeen(familyId, msg.sender) || access.isExecutor(familyId, msg.sender) || access.isGuardian(familyId, msg.sender),
             "Not authorized"
@@ -146,6 +149,7 @@ contract Proof18Policy is ZamaEthereumConfig {
         latestDecisionAmounts[familyId] = amount;
         latestDecisionRecurring[familyId] = isRecurring;
         latestDecisionActors[familyId] = msg.sender;
+        latestDecisionTeens[familyId] = teen;
         latestDecisionInitialized[familyId] = true;
 
         FHE.allowThis(decisionEnc);
@@ -165,7 +169,6 @@ contract Proof18Policy is ZamaEthereumConfig {
             FHE.allow(decisionEnc, owner);
         }
 
-        address teen = access.teens(familyId);
         string memory actionType = isRecurring ? "subscription" : "savings";
 
         emit PolicyEvaluated(familyId, msg.sender, teen, actionType, amount, isRecurring, block.timestamp);

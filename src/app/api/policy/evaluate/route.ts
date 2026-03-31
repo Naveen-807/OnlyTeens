@@ -8,15 +8,16 @@ export async function POST(req: NextRequest) {
   try {
     assertContractConfigForDemo();
     const body = await req.json();
-    if (!body.familyId || body.amount == null || body.passportLevel == null) {
-      return fail("BAD_REQUEST", "familyId, amount, passportLevel are required", 400);
+    if (!body.familyId || !body.teenAddress || body.amount == null || body.passportLevel == null) {
+      return fail("BAD_REQUEST", "familyId, teenAddress, amount, passportLevel are required", 400);
     }
 
     const result = await evaluateAction({
       familyId: body.familyId,
+      teenAddress: body.teenAddress,
       amount: body.amount,
       passportLevel: body.passportLevel,
-      isRecurring: body.isRecurring,
+      isRecurring: body.isRecurring ?? false,
       account: body.account,
     });
 

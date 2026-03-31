@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { withCalmaAliases } from "@/lib/calma/compat";
 import { parseIntent } from "@/lib/clawrence/intents";
 import { answerQuestion, preActionExplanation } from "@/lib/clawrence/engine";
 import { getPassport } from "@/lib/flow/passport";
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         type: "answer",
         explanation: answer,
+        calma: { explanation: answer },
         intent,
         passport,
         balances,
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         type: "action_preview",
         explanation,
+        calma: { explanation },
         intent,
         passport,
         balances,
@@ -66,12 +69,15 @@ export async function POST(req: NextRequest) {
       type: "unknown",
       explanation:
         "I am not sure what you mean. Try: 'save ₹500 weekly' or 'subscribe to Spotify for ₹119'",
+      calma: {
+        explanation:
+          "I am not sure what you mean. Try: 'save ₹500 weekly' or 'subscribe to Spotify for ₹119'",
+      },
     });
   } catch (error: any) {
     return NextResponse.json(
-      { type: "error", error: error?.message },
+      withCalmaAliases({ type: "error", error: error?.message }),
       { status: 500 },
     );
   }
 }
-

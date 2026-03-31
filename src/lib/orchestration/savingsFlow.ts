@@ -8,6 +8,7 @@ import { preActionExplanation, postDecisionExplanation, celebrationMessage } fro
 import { executeSafeSigning } from "@/lib/lit/executor";
 import { getClawrenceAccount } from "@/lib/lit/executorSession";
 import { evaluateAction } from "@/lib/zama/policy";
+import { getClawrenceExecutionContext } from "@/lib/vincent/execution";
 import { evaluateVincentGuardrailsAsync } from "@/lib/vincent/policy";
 import {
   buildSavingsReceipt,
@@ -17,6 +18,7 @@ import {
 import { addReceipt, receiptFromFlowResult } from "@/lib/receipts/receiptStore";
 import { flowToWei, inrToPaise } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
+import { buildLaneMetadata } from "@/lib/runtime/lanes";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 
@@ -34,6 +36,12 @@ export async function executeSavingsFlow(params: {
 }): Promise<FlowResult> {
   try {
     assertContractConfigForDemo();
+    const lane = buildLaneMetadata({
+      session: params.session,
+      executionLane: "agent-assisted-flow",
+      approvalMode: "none",
+      policyMode: "encrypted-live",
+    });
     const passportBefore = await getPassport(params.familyId, params.teenAddress);
 
     const preExplanation = await preActionExplanation({
@@ -49,10 +57,16 @@ export async function executeSavingsFlow(params: {
 
     const { session: clawrenceSession, account: clawrenceAccount } = await getClawrenceAccount(
       params.familyId,
+      params.teenAddress,
+    );
+    const executionContext = await getClawrenceExecutionContext(
+      params.familyId,
+      params.teenAddress,
     );
 
     const policyResult = await evaluateAction({
       familyId: params.familyId,
+      teenAddress: params.teenAddress,
       amount: inrToPaise(params.amount),
       passportLevel: passportBefore.level,
       isRecurring: params.isRecurring,
@@ -87,12 +101,16 @@ export async function executeSavingsFlow(params: {
         success: false,
         decision,
         requiresApproval: false,
+        ...lane,
         guardrail: {
           decision: "BLOCK",
           reason: guardrails.reasons[0],
           source: guardrails.provider,
         },
         guardrails,
+        executionMode: executionContext.executionMode,
+        fallbackActive: executionContext.fallbackActive,
+        vincent: executionContext.vincent,
         clawrence: { preExplanation, postExplanation },
         error: guardrails.reasons.join(" "),
       };
@@ -104,6 +122,7 @@ export async function executeSavingsFlow(params: {
       guardianApproved: false,
       amount: params.amount,
       familyId: params.familyId,
+      teenAddress: params.teenAddress,
       txData: new Uint8Array([]),
       clawrencePublicKey: clawrenceSession.pkpPublicKey || params.clawrencePublicKey,
       session: params.session,
@@ -115,17 +134,41 @@ export async function executeSavingsFlow(params: {
         success: false,
         decision,
         requiresApproval: litResult.requiresApproval || false,
+        ...lane,
         zama: {
           decision,
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: policyResult.txHash || "",
+          source: policyResult.source,
+          guardianView:
+            policyResult.source === "encrypted"
+              ? "Guardian can inspect the encrypted decision on Sepolia."
+              : "Guardian is viewing a degraded policy fallback.",
+          teenView:
+            policyResult.source === "encrypted"
+              ? "Policy passed confidential review."
+              : "Policy review used degraded mode.",
         },
         guardrail: {
           decision: "ALLOW",
           source: guardrails.provider,
         },
         guardrails,
+        executionMode: litResult.executionMode,
+        fallbackActive: litResult.fallbackActive,
         lit: { signed: false, actionCid: SAFE_EXECUTOR_CID, response: litResult.response },
+        chipotle: {
+          configured: litResult.chipotle.configured,
+          accountId: litResult.chipotle.accountId,
+          groupId: litResult.chipotle.groupId,
+          pkpId: litResult.chipotle.pkpId,
+          walletId: litResult.chipotle.walletId,
+          safeExecutorCid: litResult.chipotle.safeExecutorCid,
+          usageKeyId: litResult.chipotle.usageKeyId,
+          usageKeyScope: litResult.chipotle.usageKeyScope,
+          mode: litResult.chipotle.mode,
+        },
+        vincent: executionContext.vincent,
         clawrence: { preExplanation, postExplanation },
         error: litResult.reason,
       };
@@ -139,7 +182,17 @@ export async function executeSavingsFlow(params: {
     );
 
     let scheduleResult:
-      | { txHash: string; scheduleId: number; label: string; interval?: "weekly" | "monthly" }
+      | {
+          txHash: string;
+          scheduleId: number;
+          label: string;
+          interval?: "weekly" | "monthly";
+          backend?: "flow-native-scheduled" | "evm-manual";
+          executionSource?: "flow-evm-contract" | "flow-native-scheduled";
+          scheduledExecutionId?: string;
+          scheduledExecutionExplorerUrl?: string;
+          nextExecutionAt?: string;
+        }
       | undefined;
 
     if (params.isRecurring) {
@@ -152,12 +205,7 @@ export async function executeSavingsFlow(params: {
         `auto-save-${params.interval}`,
         params.interval,
       );
-      scheduleResult = {
-        txHash: createdSchedule.txHash,
-        scheduleId: createdSchedule.scheduleId,
-        label: `auto-save-${params.interval}`,
-        interval: params.interval,
-      };
+      scheduleResult = createdSchedule;
     }
 
     const parsedEvents = await parseTransactionEvents(flowTx.txHash as `0x${string}`);
@@ -189,8 +237,12 @@ export async function executeSavingsFlow(params: {
       postExplanation,
       litSignatureResponse: litResult.response,
       guardrails,
+      schedulerBackend: scheduleResult?.backend,
       scheduleTxHash: scheduleResult?.txHash,
       scheduleId: scheduleResult?.scheduleId,
+      scheduledExecutionId: scheduleResult?.scheduledExecutionId,
+      scheduledExecutionExplorerUrl: scheduleResult?.scheduledExecutionExplorerUrl,
+      nextExecutionAt: scheduleResult?.nextExecutionAt,
       zamaTxHash: policyResult.txHash || undefined,
     });
 
@@ -200,7 +252,22 @@ export async function executeSavingsFlow(params: {
       {
         decision,
         flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
+        ...lane,
         lit: { actionCid: SAFE_EXECUTOR_CID },
+        executionMode: litResult.executionMode,
+        fallbackActive: litResult.fallbackActive,
+        chipotle: {
+          configured: litResult.chipotle.configured,
+          accountId: litResult.chipotle.accountId,
+          groupId: litResult.chipotle.groupId,
+          pkpId: litResult.chipotle.pkpId,
+          walletId: litResult.chipotle.walletId,
+          safeExecutorCid: litResult.chipotle.safeExecutorCid,
+          usageKeyId: litResult.chipotle.usageKeyId,
+          usageKeyScope: litResult.chipotle.usageKeyScope,
+          mode: litResult.chipotle.mode,
+        },
+        vincent: executionContext.vincent,
         guardrails,
         zama: { contractAddress: CONTRACTS.policy },
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
@@ -244,30 +311,53 @@ export async function executeSavingsFlow(params: {
 
     return {
       success: true,
-      decision,
-      requiresApproval: false,
-      flow: {
+        decision,
+        requiresApproval: false,
+        ...lane,
+        flow: {
         txHash: flowTx.txHash,
         explorerUrl: flowTx.explorerUrl,
         events: parsedEvents.events,
         gasUsed: parsedEvents.gasUsed,
       },
+      executionMode: litResult.executionMode,
+      fallbackActive: litResult.fallbackActive,
       lit: {
         signed: true,
         actionCid: SAFE_EXECUTOR_CID,
         response: litResult.response,
+      },
+      chipotle: {
+        configured: litResult.chipotle.configured,
+        accountId: litResult.chipotle.accountId,
+        groupId: litResult.chipotle.groupId,
+        pkpId: litResult.chipotle.pkpId,
+        walletId: litResult.chipotle.walletId,
+        safeExecutorCid: litResult.chipotle.safeExecutorCid,
+        usageKeyId: litResult.chipotle.usageKeyId,
+        usageKeyScope: litResult.chipotle.usageKeyScope,
+        mode: litResult.chipotle.mode,
       },
       guardrail: {
         decision: "ALLOW",
         source: guardrails.provider,
       },
       guardrails,
-      zama: {
-        decision,
-        contractAddress: CONTRACTS.policy,
-        evaluationTxHash: policyResult.txHash || "",
-        source: policyResult.source,
-      },
+      vincent: executionContext.vincent,
+        zama: {
+          decision,
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: policyResult.txHash || "",
+          source: policyResult.source,
+          guardianView:
+            policyResult.source === "encrypted"
+              ? "Guardian can inspect the encrypted decision on Sepolia."
+              : "Guardian is viewing a degraded policy fallback.",
+          teenView:
+            policyResult.source === "encrypted"
+              ? "Policy passed confidential review."
+              : "Policy review used degraded mode.",
+        },
       storacha: {
         receiptCid: storachaReceipt.cid,
         receiptUrl: storachaReceipt.url,
@@ -291,6 +381,8 @@ export async function executeSavingsFlow(params: {
       success: false,
       decision: "BLOCKED",
       requiresApproval: false,
+      executionMode: "local-fallback",
+      fallbackActive: true,
       error: error?.message || "Unknown error in savings flow",
     };
   }

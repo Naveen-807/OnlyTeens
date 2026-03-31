@@ -4,6 +4,7 @@ import {
   getAllRequestsByFamily,
 } from "@/lib/approvals/durableApprovals";
 import { fail, mapErrorToCode, ok } from "@/lib/api/response";
+import { withCalmaAliases } from "@/lib/calma/compat";
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,11 +19,13 @@ export async function GET(req: NextRequest) {
       ? getAllRequestsByFamily(familyId)
       : getPendingRequestsByFamily(familyId);
 
+    const payload = requests.map((request) => withCalmaAliases(request));
+
     return ok({
-      items: requests,
-      requests,
-      approvals: requests,
-      count: requests.length,
+      items: payload,
+      requests: payload,
+      approvals: payload,
+      count: payload.length,
     });
   } catch (error: any) {
     return fail(mapErrorToCode(error), error.message, 500);

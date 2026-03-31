@@ -4,6 +4,7 @@ import {
   getCachedIdempotentResult,
   setCachedIdempotentResult,
 } from "@/lib/api/idempotency";
+import { withCalmaAliases } from "@/lib/calma/compat";
 import { rejectRequestDurable } from "@/lib/approvals/durableApprovals";
 
 export async function POST(req: NextRequest) {
@@ -25,11 +26,11 @@ export async function POST(req: NextRequest) {
 
     const result = await rejectRequestDurable(requestId, guardianNote);
 
-    const response = {
+    const response = withCalmaAliases({
       rejected: true,
       request: result.request,
       rejectionCid: result.rejectionCid,
-    };
+    });
 
     if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, response);
     return ok(response);

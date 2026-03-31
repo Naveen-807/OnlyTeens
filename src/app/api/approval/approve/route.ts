@@ -4,6 +4,8 @@ import {
   getCachedIdempotentResult,
   setCachedIdempotentResult,
 } from "@/lib/api/idempotency";
+import { withCalmaAliases } from "@/lib/calma/compat";
+import { attachErc8004Evidence } from "@/lib/erc8004/enrich";
 import {
   approveRequestDurable,
   markExecuted,
@@ -64,10 +66,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const response = {
+    const enrichedExecution = await attachErc8004Evidence({
+      familyId: request.familyId,
+      result,
+      tag2: "guardian-approved-agent-flow",
+      requestURI: `${process.env.CALMA_AGENT_URI_BASE || "http://localhost:3000/api"}/proof/judges?familyId=${request.familyId}`,
+      feedbackURI: `${process.env.CALMA_AGENT_URI_BASE || "http://localhost:3000/api"}/agent_log.json`,
+    });
+
+    const response = withCalmaAliases({
       approval: { cid: approval.approvalCid, url: approval.approvalUrl },
-      execution: result,
-    };
+      execution: enrichedExecution,
+    });
     if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, response);
     return ok(response);
   } catch (error: any) {

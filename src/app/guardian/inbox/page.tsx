@@ -250,10 +250,10 @@ export default function GuardianInbox() {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Clawrence Explanation */}
+                {/* Calma Explanation */}
                 <div className="rounded-lg bg-primary/10 border border-primary/20 p-4">
                   <p className="text-xs uppercase tracking-wider text-primary/70 mb-2">
-                    🤖 Clawrence says
+                    🤖 Calma says
                   </p>
                   <p className="text-sm text-foreground">{req.clawrenceGuardianExplanation}</p>
                 </div>

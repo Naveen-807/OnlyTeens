@@ -86,12 +86,12 @@ export default function ActivityPage() {
               </div>
             </div>
 
-            {/* Clawrence Explanation */}
+            {/* Calma Explanation */}
             {selected.clawrenceExplanation && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                 <div className="flex items-center gap-2 text-xs font-medium text-primary mb-2">
                   <Zap className="h-3.5 w-3.5" />
-                  Clawrence said
+                  Calma said
                 </div>
                 <p className="text-sm text-muted-foreground">{selected.clawrenceExplanation}</p>
               </div>

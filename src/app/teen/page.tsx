@@ -28,7 +28,7 @@ export default function TeenDashboard() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <div className="text-6xl mb-4">✨</div>
-        <h2 className="text-2xl font-semibold mb-2 text-foreground">Welcome to Proof18</h2>
+        <h2 className="text-2xl font-semibold mb-2 text-foreground">Welcome to Calma</h2>
         <p className="text-muted-foreground">Please log in to continue.</p>
       </div>
     );
@@ -70,7 +70,7 @@ export default function TeenDashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Proof18 teen workspace</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Calma teen workspace</h1>
           <p className="text-sm text-muted-foreground">
             {passport
               ? `Level ${passport.level}: ${passport.levelName} with guardian-approved autonomy`
@@ -137,7 +137,7 @@ export default function TeenDashboard() {
         {[
           { icon: PiggyBank, label: "Save", href: "/teen/save", color: "text-emerald-400" },
           { icon: CreditCard, label: "Subscribe", href: "/teen/subscribe", color: "text-violet-400" },
-          { icon: Bot, label: "Clawrence", href: "/teen/chat", color: "text-primary" },
+          { icon: Bot, label: "Calma", href: "/teen/chat", color: "text-primary" },
           { icon: History, label: "Activity", href: "/teen/activity", color: "text-muted-foreground" },
         ].map((item) => (
           <Link

@@ -40,9 +40,9 @@ const surfaceLinks = [
 ];
 
 const pillars = [
-  "Policy stays encrypted before any action executes.",
-  "Guardian authority remains explicit, not implied.",
-  "Every approval path ends with proof, not guesswork.",
+  "Walletless onboarding and sponsored gas keep the product consumer-first.",
+  "Guardian authority stays explicit while teens build autonomy on Flow.",
+  "Recurring actions are automation-first, with proof instead of guesswork.",
 ];
 
 export default function Page() {
@@ -54,30 +54,30 @@ export default function Page() {
             <div className="max-w-4xl">
               <div className="flex flex-wrap gap-2">
                 <Badge>Proof18</Badge>
-                <Badge variant="secondary">Fresh Code target</Badge>
-                <Badge variant="outline">Flow Testnet • Zama Sepolia • Vincent / Lit</Badge>
+                <Badge>Calma</Badge>
+                <Badge variant="secondary">Direct + Agent Flow lanes</Badge>
+                <Badge variant="outline">Flow EVM • Zama • Chipotle • Vincent</Badge>
               </div>
 
               <div className="mt-8 max-w-4xl">
                 <Image
                   src="/proof18-wordmark.svg"
-                  alt="Proof18"
+                  alt="Calma"
                   width={220}
                   height={52}
                   className="h-auto w-[180px] sm:w-[220px]"
                   priority
                 />
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.32em] text-primary/75">
-                  Cross-chain confidential teen finance
+                  Calma on Flow
                 </p>
                 <h1 className="font-display mt-4 max-w-5xl text-[clamp(3.4rem,9vw,7.2rem)] leading-[0.88] tracking-[-0.05em] text-gold-gradient">
-                  Private policy, controlled autonomy, guardian-delegated AI execution.
+                  Family finance on Flow, with direct actions, private policy, and bounded autopilot.
                 </h1>
                 <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                  Proof18 coordinates Flow Testnet execution, confidential policy
-                  checks on Ethereum Sepolia with Zama, and delegated authorization
-                  through Vincent and Lit. Teens get guided autonomy. Guardians keep
-                  revocable control. Every action leaves a reviewable trail.
+                  Calma gives guardians and teens Flow-linked app wallets, direct FLOW actions,
+                  an agent-assisted lane for natural language requests, and a narrow guardian-only
+                  autopilot. Flow moves value, Zama protects policy, and Vincent plus Lit bound execution.
                 </p>
               </div>
 
@@ -118,9 +118,9 @@ export default function Page() {
                   ))}
                 </div>
                 <p className="mt-4 text-xs leading-6 text-muted-foreground">
-                  Execution is not a single-chain jump. The backend coordinates private
-                  policy on Sepolia, bounded authorization via Vincent and Lit, and
-                  final settlement on Flow Testnet.
+                  The user experience is consumer finance first. Flow handles execution,
+                  recurring actions, and gasless-ready settlement while the policy and
+                  authorization layers stay visible but out of the way.
                 </p>
               </Card>
 
@@ -133,8 +133,8 @@ export default function Page() {
                     Guardian control without killing the teen experience.
                   </p>
                   <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    The product should read as consumer finance first, with privacy,
-                    authorization, and proof layered in as visible trust machinery.
+                    The product should read as a Flow-native consumer app first, with
+                    privacy, authorization, and proof layered in as trust machinery.
                   </p>
                 </div>
               </Card>

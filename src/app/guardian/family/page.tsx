@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Users, Shield, User, Bot } from "lucide-react";
 
 import { FamilyOnboarding } from "@/components/FamilyOnboarding";
@@ -7,10 +8,36 @@ import { PermissionsProof } from "@/components/PermissionsProof";
 import { useAuthStore } from "@/store/authStore";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { RuntimeCapabilities } from "@/lib/types";
 
 export default function GuardianFamilyPage() {
   const { session, family } = useAuthStore();
   const safeExecutorCid = process.env.NEXT_PUBLIC_SAFE_EXECUTOR_CID || "";
+  const [capabilities, setCapabilities] = useState<RuntimeCapabilities | null>(null);
+  const vincentMode =
+    capabilities?.vincent.mode === "live"
+      ? "live"
+      : capabilities?.vincent.mode === "local-only"
+        ? "local-only"
+        : "unknown";
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(`/api/runtime/capabilities?familyId=${encodeURIComponent(family?.familyId || "")}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!mounted) return;
+        setCapabilities(data?.capabilities || null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setCapabilities(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [family?.familyId]);
 
   if (!session || !family) {
     return (
@@ -57,6 +84,39 @@ export default function GuardianFamilyPage() {
               <p className="font-mono text-xs text-blue-400/80 break-all">{family.teenAddress}</p>
             </div>
           </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-border/30 bg-card/50 p-4">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+                Chipotle account
+              </div>
+              <p className="font-mono text-xs text-foreground break-all">
+                {family.chipotleAccountId || "local-demo"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/30 bg-card/50 p-4">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+                Flow runtime
+              </div>
+              <p className="font-mono text-xs text-foreground break-all leading-5">
+                {family.executionMode || "local-fallback"}
+                <br />
+                {capabilities?.flow.walletMode || family.walletMode || "app-managed"} ·{" "}
+                {capabilities?.flow.gasMode || family.gasMode || "user-funded"}
+                <br />
+                {capabilities?.flow.preferredSchedulerBackend ||
+                  family.schedulerBackend ||
+                  "evm-manual"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/30 bg-card/50 p-4">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+                Linked teens
+              </div>
+              <p className="font-mono text-xs text-foreground break-all">
+                {1 + (family.linkedTeens?.filter((teen: any) => teen.active).length || 0)}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -66,12 +126,26 @@ export default function GuardianFamilyPage() {
         clawrencePkpAddress={family.clawrenceAddress || family.guardianAddress}
         safeExecutorCid={safeExecutorCid}
         permittedScopes={["PersonalSign", "LitAction"]}
+        vincentMode={vincentMode}
+        capabilities={capabilities || undefined}
         proof={{
           zamaDecision: "GREEN",
-          guardrailDecision: "REVIEW",
+          zamaSource: capabilities?.sponsorReadiness.zamaCore ? "runtime" : undefined,
+          guardrailDecision: vincentMode === "live" ? "ALLOW" : "REVIEW",
           guardrailReason:
-            "The guardrail API is currently a placeholder on this surface.",
-          litAuthorized: !!session?.sessionSigs,
+            vincentMode === "live"
+              ? capabilities?.vincent.note || "Runtime reports live Vincent API mode."
+              : capabilities?.vincent.note || "Runtime reports local guardrails mode.",
+          litAuthorized:
+            capabilities?.lit.familyProof.permissions.authorized ||
+            capabilities?.lit.familyProof.litActionMatchesRuntimeCid ||
+            !!session?.sessionSigs,
+          litPermissionStatus: capabilities?.lit.familyProof.permissions.fetched
+            ? "fetched"
+            : capabilities?.lit.familyProof.available
+              ? "derived"
+              : "unavailable",
+          litPermissionNote: capabilities?.lit.familyProof.permissions.error,
           litActionCid: family.litActionCid || safeExecutorCid,
         }}
       />

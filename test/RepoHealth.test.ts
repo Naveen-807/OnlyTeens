@@ -55,10 +55,10 @@ describe("Repo health and safety wiring", function () {
     expect(subscriptionFlow).to.include("recordAction(");
     expect(subscriptionFlow).to.include("guardianApproved: true");
 
-    expect(onboarding).to.include("mintClawrencePKP");
-    expect(onboarding).to.include("guardianPkpPublicKey");
-    expect(onboarding).to.include("teenPkpPublicKey");
-    expect(onboarding).to.include("clawrencePkpPublicKey");
+    expect(onboarding).to.include("ensureFamilyChipotleProvision");
+    expect(onboarding).to.include("bindPhoneSessionToWallet");
+    expect(onboarding).to.include("chipotleAccountId");
+    expect(onboarding).to.include("linkedTeens");
 
     expect(phoneVerify).to.include("getOrCreatePhoneSession");
     expect(phoneVerify).to.include('authChannel: "phone-otp"');
@@ -75,5 +75,30 @@ describe("Repo health and safety wiring", function () {
     expect(policy).to.include("FHE.select");
     expect(policy).to.include("FHE.allow(decisionEnc");
     expect(policy).to.include("PolicyEvaluated");
+  });
+
+  it("keeps submission proof surfaces wired to runtime truth", function () {
+    const packageJson = readJson<{
+      scripts?: Record<string, string>;
+    }>("package.json");
+    const capabilitiesRoute = readText("src/app/api/runtime/capabilities/route.ts");
+    const proofPage = readText("src/app/auth/proof/page.tsx");
+    const runtimeCapabilities = readText("src/lib/runtime/capabilities.ts");
+    const pinScript = readText("scripts/pinLitAction.ts");
+    const readme = readText("README.md");
+
+    expect(packageJson.scripts?.["pin:lit-action"]).to.equal(
+      "node --import tsx scripts/pinLitAction.ts",
+    );
+    expect(capabilitiesRoute).to.include("getRuntimeCapabilities");
+    expect(proofPage).to.include("getRuntimeCapabilities");
+    expect(proofPage).to.include("force-dynamic");
+    expect(runtimeCapabilities).to.include("flowNativeFeaturesUsed");
+    expect(runtimeCapabilities).to.include("preferredSchedulerBackend");
+    expect(pinScript).to.include("uploadFileBlob");
+    expect(pinScript).to.include("safeExecutor.cid");
+    expect(readme).to.include("consumer DeFi app built for Flow");
+    expect(readme).to.include("/auth/proof");
+    expect(readme).to.include("Fresh Code");
   });
 });

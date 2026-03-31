@@ -44,3 +44,20 @@ export async function uploadJSON(
     );
   }
 }
+
+export async function uploadFileBlob(
+  blob: Blob,
+): Promise<{ cid: string; url: string }> {
+  try {
+    const c = await getStorachaClient();
+    const cid = await c.uploadFile(blob);
+    return {
+      cid: cid.toString(),
+      url: `https://storacha.link/ipfs/${cid.toString()}`,
+    };
+  } catch (error: any) {
+    throw new Error(
+      `EVIDENCE_WRITE_FAILED:${error?.message || "Storacha upload failed"}`,
+    );
+  }
+}

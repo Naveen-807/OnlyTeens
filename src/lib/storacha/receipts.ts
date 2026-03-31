@@ -3,6 +3,7 @@ import "server-only";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { uploadJSON } from "@/lib/storacha/client";
+import { buildDelegationMetadata } from "@/lib/storacha/delegation";
 import type {
   GuardrailResult,
   PolicyDecision,
@@ -37,8 +38,12 @@ export function buildSavingsReceipt(params: {
   postExplanation: string;
   litSignatureResponse?: any;
   guardrails?: GuardrailResult;
+  schedulerBackend?: "flow-native-scheduled" | "evm-manual";
   scheduleTxHash?: string;
   scheduleId?: number;
+  scheduledExecutionId?: string;
+  scheduledExecutionExplorerUrl?: string;
+  nextExecutionAt?: string;
   celebration?: string;
   zamaTxHash?: string;
 }): Proof18Receipt {
@@ -66,11 +71,19 @@ export function buildSavingsReceipt(params: {
       litSignatureResponse: params.litSignatureResponse,
       flowTxHash: params.flowTxHash,
       flowExplorerUrl: `https://evm-testnet.flowscan.io/tx/${params.flowTxHash}`,
+      executionSource:
+        params.schedulerBackend === "flow-native-scheduled"
+          ? "flow-native-scheduled"
+          : "flow-evm-contract",
+      schedulerBackend: params.schedulerBackend,
       scheduleTxHash: params.scheduleTxHash,
       scheduleId: params.scheduleId,
       scheduleLabel: params.isRecurring
         ? `auto-save-${params.interval || "weekly"}`
         : undefined,
+      scheduledExecutionId: params.scheduledExecutionId,
+      scheduledExecutionExplorerUrl: params.scheduledExecutionExplorerUrl,
+      nextExecutionAt: params.nextExecutionAt,
     },
     passport: {
       levelBefore: params.passportBefore,
@@ -84,6 +97,11 @@ export function buildSavingsReceipt(params: {
       celebration: params.celebration,
     },
     timestamp: new Date().toISOString(),
+    delegation: buildDelegationMetadata({
+      familyId: params.familyId,
+      role: "executor",
+      subject: params.teen,
+    }),
   };
 }
 
@@ -104,8 +122,12 @@ export function buildSubscriptionReceipt(params: {
   postExplanation: string;
   litSignatureResponse?: any;
   guardrails?: GuardrailResult;
+  schedulerBackend?: "flow-native-scheduled" | "evm-manual";
   scheduleTxHash?: string;
   scheduleId?: number;
+  scheduledExecutionId?: string;
+  scheduledExecutionExplorerUrl?: string;
+  nextExecutionAt?: string;
   celebration?: string;
   approvalCid?: string;
   zamaTxHash?: string;
@@ -135,9 +157,17 @@ export function buildSubscriptionReceipt(params: {
       litSignatureResponse: params.litSignatureResponse,
       flowTxHash: params.flowTxHash,
       flowExplorerUrl: `https://evm-testnet.flowscan.io/tx/${params.flowTxHash}`,
+      executionSource:
+        params.schedulerBackend === "flow-native-scheduled"
+          ? "flow-native-scheduled"
+          : "flow-evm-contract",
+      schedulerBackend: params.schedulerBackend,
       scheduleTxHash: params.scheduleTxHash,
       scheduleId: params.scheduleId,
       scheduleLabel: params.serviceName,
+      scheduledExecutionId: params.scheduledExecutionId,
+      scheduledExecutionExplorerUrl: params.scheduledExecutionExplorerUrl,
+      nextExecutionAt: params.nextExecutionAt,
     },
     passport: {
       levelBefore: params.passportBefore,
@@ -157,6 +187,11 @@ export function buildSubscriptionReceipt(params: {
       approvalStorachaCid: params.approvalCid,
     },
     timestamp: new Date().toISOString(),
+    delegation: buildDelegationMetadata({
+      familyId: params.familyId,
+      role: "executor",
+      subject: params.teen,
+    }),
   };
 }
 

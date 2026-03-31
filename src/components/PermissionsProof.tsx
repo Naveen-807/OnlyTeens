@@ -3,7 +3,7 @@ import { Shield, Lock, Zap, ExternalLink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import type { PermissionsProofState } from "@/lib/types";
+import type { PermissionsProofState, RuntimeCapabilities } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function shorten(value?: string | null) {
@@ -37,6 +37,8 @@ export function PermissionsProof({
   safeExecutorCid,
   permittedScopes = [],
   proof,
+  vincentMode = "unknown",
+  capabilities,
   className,
 }: {
   guardianPkpAddress: string;
@@ -45,20 +47,43 @@ export function PermissionsProof({
   safeExecutorCid: string;
   permittedScopes?: string[];
   proof?: PermissionsProofState;
+  vincentMode?: "live" | "local-only" | "unknown";
+  capabilities?: RuntimeCapabilities;
   className?: string;
 }) {
+  const vincentLabel =
+    vincentMode === "live"
+      ? "LIVE API"
+      : vincentMode === "local-only"
+        ? "LOCAL ONLY"
+        : "RUNTIME";
+
+  const vincentLabelClass =
+    vincentMode === "live"
+      ? "border-emerald-500/30 bg-emerald-950/60 text-emerald-400"
+      : vincentMode === "local-only"
+        ? "border-slate-500/30 bg-slate-950/60 text-slate-400"
+        : "border-blue-500/30 bg-blue-950/60 text-blue-300";
+
+  const vincentCopy =
+    vincentMode === "live"
+      ? "Guardian-delegated Vincent API guardrails are active for this run"
+      : vincentMode === "local-only"
+        ? "Vincent API is not configured; local scoped guardrails are enforced"
+        : "Vincent mode is detected at runtime before execution";
+
   return (
     <Card className={cn("overflow-hidden p-5 sm:p-6", className)}>
       <div className="flex flex-col gap-5">
         <div>
-          <Badge>Delegated execution proof</Badge>
+          <Badge>Consumer DeFi on Flow</Badge>
           <h3 className="font-display mt-4 text-3xl leading-none tracking-[-0.04em] text-foreground">
-            Private policy before money moves
+            Flow execution with private policy before money moves
           </h3>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Proof18 only executes after confidential policy, delegated authorization,
-            and bounded signing all line up. The guardian sets authority. Clawrence
-            operates inside the granted scope.
+            Proof18 is designed to feel like consumer finance, not wallet ops. Flow
+            handles user-facing execution and automation, while Zama, Vincent, and
+            Lit keep the action inside guardian-defined safety boundaries.
           </p>
         </div>
 
@@ -78,6 +103,11 @@ export function PermissionsProof({
                   <Badge className={cn("text-xs", getDecisionBadgeColor(proof?.zamaDecision))}>
                     {proof?.zamaDecision || "PENDING"}
                   </Badge>
+                  {proof?.zamaSource ? (
+                    <Badge className="border-violet-500/25 bg-violet-950/40 text-[10px] text-violet-200">
+                      {proof.zamaSource.toUpperCase()}
+                    </Badge>
+                  ) : null}
                 </div>
                 <p className="mt-0.5 text-xs text-violet-200/65">
                   Encrypted policy decides if action is within family rules
@@ -95,10 +125,18 @@ export function PermissionsProof({
                   <Badge className={cn("text-xs", getDecisionBadgeColor(proof?.guardrailDecision))}>
                     {proof?.guardrailDecision || "PENDING"}
                   </Badge>
+                  <Badge className={cn("text-[10px]", vincentLabelClass)}>
+                    {vincentLabel}
+                  </Badge>
                 </div>
                 <p className="mt-0.5 text-xs text-amber-100/65">
-                  Guardian-delegated authority stays scoped, revocable, and auditable
+                  {vincentCopy}
                 </p>
+                {proof?.guardrailReason ? (
+                  <p className="mt-1.5 text-xs text-amber-100/75">
+                    {proof.guardrailReason}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -117,10 +155,20 @@ export function PermissionsProof({
                   )}>
                     {proof?.litAuthorized ? "AUTHORIZED" : "PENDING"}
                   </Badge>
+                  {proof?.litPermissionStatus ? (
+                    <Badge className="border-blue-500/25 bg-blue-950/40 text-[10px] text-blue-200">
+                      {proof.litPermissionStatus.toUpperCase()}
+                    </Badge>
+                  ) : null}
                 </div>
                 <p className="mt-0.5 text-xs text-blue-100/65">
                   Immutable signing policy controls when the delegated executor can act
                 </p>
+                {proof?.litPermissionNote ? (
+                  <p className="mt-1.5 text-xs text-blue-100/75">
+                    {proof.litPermissionNote}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -159,7 +207,7 @@ export function PermissionsProof({
             <div className="rounded-[1.2rem] border border-violet-500/25 bg-violet-950/24 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-wider text-violet-100 font-medium">
-                  Clawrence executor
+                  Calma executor
                 </p>
                 <Badge className="border-violet-500/30 bg-violet-950/60 text-violet-400 text-[10px]">
                   Lit Action
@@ -170,6 +218,152 @@ export function PermissionsProof({
             </div>
           </div>
         </div>
+
+        {capabilities ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Runtime capability truth
+              </p>
+              <div className="mt-3 grid gap-3 text-sm text-foreground/85">
+                <div className="flex items-center justify-between rounded-xl border border-border/55 px-3 py-2">
+                  <span>Flow core</span>
+                  <Badge className={cn("text-[10px]", capabilities.sponsorReadiness.flowCore ? getDecisionBadgeColor("ALLOW") : getDecisionBadgeColor("BLOCK"))}>
+                    {capabilities.sponsorReadiness.flowCore ? "READY" : "INCOMPLETE"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-border/55 px-3 py-2">
+                  <span>Wallet mode</span>
+                  <Badge className="border-blue-500/30 bg-blue-950/50 text-[10px] text-blue-300">
+                    {capabilities.flow.walletMode}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-border/55 px-3 py-2">
+                  <span>Gas mode</span>
+                  <Badge className={cn("text-[10px]", capabilities.flow.gasMode === "sponsored" ? getDecisionBadgeColor("ALLOW") : getDecisionBadgeColor("REVIEW"))}>
+                    {capabilities.flow.gasMode}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-border/55 px-3 py-2">
+                  <span>Scheduler backend</span>
+                  <Badge className={cn("text-[10px]", capabilities.flow.preferredSchedulerBackend === "flow-native-scheduled" ? getDecisionBadgeColor("ALLOW") : getDecisionBadgeColor("REVIEW"))}>
+                    {capabilities.flow.preferredSchedulerBackend}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-border/55 px-3 py-2">
+                  <span>Zama confidential policy</span>
+                  <Badge className={cn("text-[10px]", capabilities.sponsorReadiness.zamaCore ? getDecisionBadgeColor("ALLOW") : getDecisionBadgeColor("BLOCK"))}>
+                    {capabilities.sponsorReadiness.zamaCore ? "READY" : "INCOMPLETE"}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-border/55 px-3 py-2">
+                  <span>Lit delegated execution</span>
+                  <Badge className={cn("text-[10px]", capabilities.sponsorReadiness.litDelegation ? getDecisionBadgeColor("ALLOW") : getDecisionBadgeColor("REVIEW"))}>
+                    {capabilities.sponsorReadiness.litDelegation ? "LIVE PROOF" : "NEEDS DEMO"}
+                  </Badge>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                {capabilities.vincent.note}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {capabilities.flow.flowNativeFeaturesUsed.map((feature) => (
+                  <Badge key={feature} className="border-primary/25 bg-primary/10 text-[10px] text-primary">
+                    {feature}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Chain responsibilities
+              </p>
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="rounded-xl border border-border/55 px-3 py-2">
+                  <p className="font-medium text-foreground">Flow Testnet ({capabilities.flow.chainId})</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    access {shorten(capabilities.flow.accessContract)} · vault {shorten(capabilities.flow.vaultContract)} · scheduler {shorten(capabilities.flow.schedulerContract)} · passport {shorten(capabilities.flow.passportContract)}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {capabilities.flow.nativeSchedulingConfigured
+                      ? "Flow-native scheduled transactions are configured for recurring automation."
+                      : "Recurring automation currently falls back to the EVM scheduler path on Flow."}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/55 px-3 py-2">
+                  <p className="font-medium text-foreground">{capabilities.zama.network}</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    policy {shorten(capabilities.zama.policyContract)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/55 px-3 py-2">
+                  <p className="font-medium text-foreground">{capabilities.lit.network}</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    safe executor {shorten(capabilities.lit.safeExecutorCid || "not-configured")}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/55 px-3 py-2">
+                  <p className="font-medium text-foreground">Chipotle household</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    account {shorten(capabilities.lit.familyProof.chipotleAccountId)} · group{" "}
+                    {shorten(capabilities.lit.familyProof.chipotlePrimaryGroupId)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/55 px-3 py-2">
+                  <p className="font-medium text-foreground">Runtime mode</p>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    {capabilities.lit.familyProof.executionMode || "local-fallback"}
+                    {capabilities.lit.familyProof.fallbackActive ? " · fallback" : " · live"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {capabilities?.lit.familyProof.available ? (
+          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Selected family proof
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Family</p>
+                <p className="mt-2 font-mono text-xs text-foreground">{shorten(capabilities.lit.familyProof.familyId)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Guardian</p>
+                <p className="mt-2 font-mono text-xs text-foreground">{shorten(capabilities.lit.familyProof.guardianAddress)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Teen</p>
+                <p className="mt-2 font-mono text-xs text-foreground">{shorten(capabilities.lit.familyProof.teenAddress)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Calma</p>
+                <p className="mt-2 font-mono text-xs text-foreground">{shorten(capabilities.lit.familyProof.clawrenceAddress)}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {(capabilities.lit.familyProof.permissions.permittedActions.length
+                ? capabilities.lit.familyProof.permissions.permittedActions
+                : [capabilities.lit.familyProof.litActionCid || safeExecutorCid]
+              )
+                .filter(Boolean)
+                .map((actionCid) => (
+                  <Badge key={actionCid} className="border-primary/25 bg-primary/10 text-primary">
+                    {shorten(actionCid)}
+                  </Badge>
+                ))}
+            </div>
+            {capabilities.lit.familyProof.permissions.error ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Permission fetch note: {capabilities.lit.familyProof.permissions.error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">

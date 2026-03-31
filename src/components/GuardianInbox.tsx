@@ -66,7 +66,7 @@ export function GuardianInbox({
             </div>
 
             <div className="rounded-lg bg-gray-50 p-3 text-sm">
-              <p className="mb-1 font-medium text-gray-600">🤖 Clawrence says:</p>
+              <p className="mb-1 font-medium text-gray-600">🤖 Calma says:</p>
               <p>{req.clawrenceGuardianExplanation}</p>
             </div>
 
@@ -114,4 +114,3 @@ export function GuardianInbox({
     </div>
   );
 }
-

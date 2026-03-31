@@ -43,12 +43,12 @@ export function FamilyOnboarding() {
 
       await login({
         role: "guardian",
-        pkpPublicKey: guardianSession.pkpPublicKey,
-        pkpTokenId: guardianSession.pkpTokenId,
-        pkpAddress: guardianSession.pkpAddress,
-        phoneNumber: guardianSession.phoneNumber,
-        authMethod: guardianSession.authMethod,
-        address: guardianSession.address,
+        pkpPublicKey: onboardingData.guardianSession?.pkpPublicKey || guardianSession.pkpPublicKey,
+        pkpTokenId: onboardingData.guardianSession?.pkpTokenId || guardianSession.pkpTokenId,
+        pkpAddress: onboardingData.guardianSession?.pkpAddress || guardianSession.pkpAddress,
+        phoneNumber: onboardingData.guardianSession?.phoneNumber || guardianSession.phoneNumber,
+        authMethod: onboardingData.guardianSession?.authMethod || guardianSession.authMethod,
+        address: onboardingData.guardianSession?.address || guardianSession.address,
       });
 
       const familyId = onboardingData.family?.familyId || guardianSession.familyId;

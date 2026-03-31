@@ -40,7 +40,7 @@ export function ClawrenceChat({
       id: "welcome",
       role: "clawrence",
       content:
-        'Hey! I\'m Clawrence, your financial guide.\n\nTry: "save ₹500 weekly" or "subscribe to Spotify for ₹119".',
+        'Hey! I\'m Calma, your financial guide.\n\nTry: "save ₹500 weekly" or "subscribe to Spotify for ₹119".',
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -138,7 +138,7 @@ export function ClawrenceChat({
         push({
           id: `result_${Date.now()}`,
           role: "clawrence",
-          content: data?.clawrence?.celebration || data?.clawrence?.postExplanation || "Done.",
+          content: data?.calma?.celebration || data?.calma?.postExplanation || data?.clawrence?.celebration || data?.clawrence?.postExplanation || "Done.",
           timestamp: new Date().toISOString(),
         });
       } else {
@@ -163,7 +163,7 @@ export function ClawrenceChat({
           content:
             data?.requiresApproval
               ? "Sent to your guardian for approval."
-              : data?.clawrence?.celebration || "Submitted.",
+              : data?.calma?.celebration || data?.clawrence?.celebration || "Submitted.",
           timestamp: new Date().toISOString(),
         });
       }
@@ -180,7 +180,7 @@ export function ClawrenceChat({
           <Bot className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h2 className="font-bold text-gold-gradient">Clawrence</h2>
+          <h2 className="font-bold text-gold-gradient">Calma</h2>
           <p className="text-xs text-muted-foreground">Your AI financial guide</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5 text-xs text-emerald-400">
@@ -210,7 +210,7 @@ export function ClawrenceChat({
                 {msg.role === "clawrence" && (
                   <div className="flex items-center gap-2 mb-2 text-xs text-primary">
                     <Sparkles className="h-3 w-3" />
-                    Clawrence
+                    Calma
                   </div>
                 )}
                 {msg.content}
@@ -245,7 +245,7 @@ export function ClawrenceChat({
                     <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }} />
                     <span className="h-2 w-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
-                  Clawrence is thinking...
+                  Calma is thinking...
                 </div>
               </div>
             </div>

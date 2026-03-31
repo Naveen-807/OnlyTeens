@@ -112,7 +112,7 @@ export function GuardianDashboard() {
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Need help?</span>{" "}
             Your teen&apos;s requests will appear in the Approval Inbox. You can set spending
-            limits and approval thresholds in Policy Setup to control what Clawrence can execute automatically.
+            limits and approval thresholds in Policy Setup to control what Calma can execute automatically.
           </p>
         </CardContent>
       </Card>

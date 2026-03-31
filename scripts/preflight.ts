@@ -3,8 +3,10 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { createPublicClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { config as loadEnv } from "dotenv";
 
+import { LIVE_REQUIRED_ENV } from "../src/lib/runtime/config";
 import { normalizePrivateKeyEnv } from "../src/lib/runtime/privateKey";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -54,6 +56,10 @@ function assertNonZeroAddress(name: string, value?: string) {
   }
 }
 
+function isLiveMode(): boolean {
+  return process.env.PROOF18_LIVE_MODE === "true";
+}
+
 async function assertRpcReachable(label: string, url: string) {
   const chain =
     label === "FLOW"
@@ -75,6 +81,35 @@ async function assertRpcReachable(label: string, url: string) {
   console.log(`  ${label} RPC reachable (latest block ${block})`);
 }
 
+async function assertWalletLooksFunded(
+  label: string,
+  rpcUrl: string,
+  accountAddress: `0x${string}`,
+  chain: "FLOW" | "SEPOLIA",
+) {
+  const resolvedChain =
+    chain === "FLOW"
+      ? {
+          id: 545,
+          name: "Flow EVM Testnet",
+          nativeCurrency: { name: "FLOW", symbol: "FLOW", decimals: 18 },
+          rpcUrls: { default: { http: [rpcUrl] } },
+        }
+      : {
+          id: 11155111,
+          name: "Sepolia",
+          nativeCurrency: { name: "Sepolia Ether", symbol: "SEP", decimals: 18 },
+          rpcUrls: { default: { http: [rpcUrl] } },
+        };
+
+  const client = createPublicClient({ chain: resolvedChain, transport: http(rpcUrl) });
+  const balance = await client.getBalance({ address: accountAddress });
+  if (balance <= 0n) {
+    throw new Error(`${label} wallet ${accountAddress} has zero native balance`);
+  }
+  console.log(`  ${label} wallet funded (${balance.toString()} wei)`);
+}
+
 async function assertLitActionCidResolvable(cid: string) {
   const url = `https://ipfs.io/ipfs/${cid}`;
   const response = await fetch(url, { method: "HEAD" });
@@ -90,12 +125,31 @@ function assertStorachaCreds() {
   console.log("  Storacha credentials present");
 }
 
-function assertEvaluatorKeyFundedHint() {
-  normalizePrivateKeyEnv(
-    "ZAMA_EVALUATOR_PRIVATE_KEY",
-    process.env.ZAMA_EVALUATOR_PRIVATE_KEY || process.env.ZAMA_PRIVATE_KEY,
-  );
-  console.log("  Zama evaluator private key configured (funding must be verified onchain)");
+function getPrivateKeyAccount(envName: string, fallback?: string) {
+  const raw = process.env[envName] || fallback;
+  if (!raw) return null;
+  return privateKeyToAccount(normalizePrivateKeyEnv(envName, raw));
+}
+
+function assertVincentConfig() {
+  requiredEnv("VINCENT_API_KEY");
+  requiredEnv("VINCENT_APP_ID");
+  requiredEnv("VINCENT_APP_VERSION");
+  requiredEnv("VINCENT_REDIRECT_URI");
+  requiredEnv("VINCENT_JWT_AUDIENCE");
+  normalizePrivateKeyEnv("VINCENT_DELEGATEE_PRIVATE_KEY", process.env.VINCENT_DELEGATEE_PRIVATE_KEY);
+  console.log("  Vincent app auth surface configured");
+}
+
+function assertErc8004Config() {
+  requiredEnv("ERC8004_IDENTITY_REGISTRY_ADDRESS");
+  requiredEnv("ERC8004_REPUTATION_REGISTRY_ADDRESS");
+  requiredEnv("ERC8004_VALIDATION_REGISTRY_ADDRESS");
+  assertNonZeroAddress("erc8004IdentityRegistry", process.env.ERC8004_IDENTITY_REGISTRY_ADDRESS);
+  assertNonZeroAddress("erc8004ReputationRegistry", process.env.ERC8004_REPUTATION_REGISTRY_ADDRESS);
+  assertNonZeroAddress("erc8004ValidationRegistry", process.env.ERC8004_VALIDATION_REGISTRY_ADDRESS);
+  normalizePrivateKeyEnv("CALMA_OPERATOR_PRIVATE_KEY", process.env.CALMA_OPERATOR_PRIVATE_KEY);
+  console.log("  ERC-8004 registry surface configured");
 }
 
 function assertMintingKeys() {
@@ -140,7 +194,52 @@ async function main() {
 
   assertStorachaCreds();
   assertMintingKeys();
-  assertEvaluatorKeyFundedHint();
+  const evaluator = getPrivateKeyAccount(
+    "ZAMA_EVALUATOR_PRIVATE_KEY",
+    process.env.ZAMA_PRIVATE_KEY,
+  );
+  if (evaluator) {
+    console.log("  Zama evaluator private key configured");
+  }
+
+  if (isLiveMode()) {
+    console.log("  Live mode enabled: validating strict env surface");
+    for (const key of [
+      ...LIVE_REQUIRED_ENV.flow,
+      ...LIVE_REQUIRED_ENV.zama,
+      ...LIVE_REQUIRED_ENV.chipotle,
+      ...LIVE_REQUIRED_ENV.vincent,
+      ...LIVE_REQUIRED_ENV.erc8004,
+      ...LIVE_REQUIRED_ENV.storageAndAi,
+    ]) {
+      requiredEnv(key);
+    }
+
+    assertNonZeroAddress("zamaKms", process.env.ZAMA_KMS_CONTRACT_ADDRESS);
+    assertNonZeroAddress("zamaAcl", process.env.ZAMA_ACL_CONTRACT_ADDRESS);
+    assertVincentConfig();
+    assertErc8004Config();
+
+    const flowOperator = getPrivateKeyAccount(
+      "FLOW_TESTNET_PRIVATE_KEY",
+      process.env.DEPLOYER_PRIVATE_KEY,
+    );
+    if (!flowOperator) {
+      throw new Error("Missing FLOW_TESTNET_PRIVATE_KEY or DEPLOYER_PRIVATE_KEY");
+    }
+    await assertWalletLooksFunded("Flow operator", flowRpc, flowOperator.address, "FLOW");
+
+    if (!evaluator) {
+      throw new Error("Missing ZAMA_EVALUATOR_PRIVATE_KEY");
+    }
+    await assertWalletLooksFunded("Zama evaluator", sepoliaRpc, evaluator.address, "SEPOLIA");
+
+    const calmaOperator = getPrivateKeyAccount("CALMA_OPERATOR_PRIVATE_KEY");
+    if (!calmaOperator) {
+      throw new Error("Missing CALMA_OPERATOR_PRIVATE_KEY");
+    }
+    await assertWalletLooksFunded("Calma operator", sepoliaRpc, calmaOperator.address, "SEPOLIA");
+  }
 
   console.log("Preflight passed.");
 }

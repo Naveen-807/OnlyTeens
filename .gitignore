@@ -84,3 +84,6 @@ ipfs*
 
 # generated runtime data
 /data/*.json
+
+# local research outputs
+/research_outputs/

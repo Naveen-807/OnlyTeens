@@ -5,6 +5,8 @@ import {
   getCachedIdempotentResult,
   setCachedIdempotentResult,
 } from "@/lib/api/idempotency";
+import { withCalmaAliases } from "@/lib/calma/compat";
+import { attachErc8004Evidence } from "@/lib/erc8004/enrich";
 import { executeSavingsFlow } from "@/lib/orchestration/savingsFlow";
 
 export async function POST(req: NextRequest) {
@@ -32,8 +34,16 @@ export async function POST(req: NextRequest) {
       clawrencePkpTokenId: body.clawrencePkpTokenId,
     });
 
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, result);
-    return ok(result);
+    const enriched = await attachErc8004Evidence({
+      familyId: body.familyId,
+      result,
+      tag2: "agent-assisted-flow",
+      requestURI: `${process.env.CALMA_AGENT_URI_BASE || "http://localhost:3000/api"}/proof/judges?familyId=${body.familyId}`,
+      feedbackURI: `${process.env.CALMA_AGENT_URI_BASE || "http://localhost:3000/api"}/agent_log.json`,
+    });
+    const payload = withCalmaAliases(enriched);
+    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, payload);
+    return ok(payload);
   } catch (error: any) {
     return fail(mapErrorToCode(error), error?.message || "Savings execution failed", 500);
   }

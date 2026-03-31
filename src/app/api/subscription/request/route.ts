@@ -5,6 +5,8 @@ import {
   getCachedIdempotentResult,
   setCachedIdempotentResult,
 } from "@/lib/api/idempotency";
+import { withCalmaAliases } from "@/lib/calma/compat";
+import { attachErc8004Evidence } from "@/lib/erc8004/enrich";
 import { addPendingRequest } from "@/lib/orchestration/approvalFlow";
 import { requestSubscription } from "@/lib/orchestration/subscriptionFlow";
 
@@ -39,8 +41,19 @@ export async function POST(req: NextRequest) {
       addPendingRequest(result.approvalRequest);
     }
 
-    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, result);
-    return ok(result);
+    const enriched = result.success
+      ? await attachErc8004Evidence({
+          familyId: body.familyId,
+          result,
+          tag2: "agent-assisted-flow",
+          requestURI: `${process.env.CALMA_AGENT_URI_BASE || "http://localhost:3000/api"}/proof/judges?familyId=${body.familyId}`,
+          feedbackURI: `${process.env.CALMA_AGENT_URI_BASE || "http://localhost:3000/api"}/agent_log.json`,
+        })
+      : result;
+
+    const payload = withCalmaAliases(enriched);
+    if (idempotencyKey) setCachedIdempotentResult(idempotencyKey, payload);
+    return ok(payload);
   } catch (error: any) {
     return fail(
       mapErrorToCode(error),

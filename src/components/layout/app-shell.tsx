@@ -43,7 +43,7 @@ const teenNavItems = [
   { id: 'home', label: 'Dashboard', href: '/teen', icon: Sparkles },
   { id: 'save', label: 'Save', href: '/teen/save', icon: PiggyBank },
   { id: 'subscribe', label: 'Subscribe', href: '/teen/subscribe', icon: CreditCard },
-  { id: 'chat', label: 'Clawrence', href: '/teen/chat', icon: Bot },
+  { id: 'chat', label: 'Calma', href: '/teen/chat', icon: Bot },
   { id: 'passport', label: 'Passport', href: '/teen/passport', icon: Award },
   { id: 'activity', label: 'Activity', href: '/teen/activity', icon: History },
 ]
@@ -80,10 +80,10 @@ export function AppShell({ role, children, userName = 'User' }: AppShellProps) {
         <SidebarHeader className="border-b border-sidebar-border/30 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
-              <span className="text-lg font-bold text-gold-gradient">P18</span>
+              <span className="text-lg font-bold text-gold-gradient">C</span>
             </div>
             <div>
-              <p className="font-semibold text-sidebar-foreground">Proof18</p>
+              <p className="font-semibold text-sidebar-foreground">Calma</p>
               <p className="text-xs capitalize text-muted-foreground">{role} View</p>
             </div>
           </div>

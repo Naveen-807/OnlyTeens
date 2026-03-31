@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 
-const title = "Proof18";
+const title = "Calma";
 const description =
-  "Cross-chain confidential teen finance with private policy, controlled autonomy, and guardian-delegated AI execution.";
+  "Consumer finance for families on Flow with direct actions, agent assistance, and guardian-bounded autopilot.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://proof18.app"),

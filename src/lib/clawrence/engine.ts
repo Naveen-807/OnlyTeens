@@ -2,18 +2,20 @@ import "server-only";
 
 import OpenAI from "openai";
 
+import { assertLiveMode, isLiveMode } from "@/lib/runtime/liveMode";
 import type { PolicyDecision } from "@/lib/types";
 
 let openai: OpenAI | null = null;
 
 function getOpenAI(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;
+  assertLiveMode(Boolean(apiKey), "CALMA_UNAVAILABLE:OPENAI_API_KEY is required in live mode");
   if (!apiKey) return null;
   if (!openai) openai = new OpenAI({ apiKey });
   return openai;
 }
 
-const SYSTEM_PROMPT = `You are Clawrence, a friendly financial guide for teenagers aged 13-17 in India.
+const SYSTEM_PROMPT = `You are Calma, a friendly financial guide for teenagers aged 13-17 in India.
 
 RULES:
 1. Explain money concepts simply, like talking to a smart teenager
@@ -38,6 +40,17 @@ PERSONALITY:
 - Celebrates small wins
 - Never condescending`;
 
+function modelName(): string {
+  return process.env.CALMA_MODEL || process.env.CLAWRENCE_MODEL || "gpt-4o-mini";
+}
+
+function offlineMessage(message: string): string {
+  if (isLiveMode()) {
+    throw new Error(message);
+  }
+  return message;
+}
+
 export async function preActionExplanation(params: {
   teenName: string;
   action: string;
@@ -50,11 +63,13 @@ export async function preActionExplanation(params: {
 }): Promise<string> {
   const client = getOpenAI();
   if (!client) {
-    return `Clawrence is offline (missing OPENAI_API_KEY). Your request "${params.description}" will follow the normal policy + guardian approval flow.`;
+    return offlineMessage(
+      `Calma is offline (missing OPENAI_API_KEY). Your request "${params.description}" will follow the normal policy + guardian approval flow.`,
+    );
   }
 
   const response = await client.chat.completions.create({
-    model: process.env.CLAWRENCE_MODEL || "gpt-4o-mini",
+    model: modelName(),
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -86,11 +101,13 @@ export async function postDecisionExplanation(params: {
 
   const client = getOpenAI();
   if (!client) {
-    return `Decision: ${params.decision}. Clawrence is offline (missing OPENAI_API_KEY), but the app will still follow your family policy rules and guardian approvals.`;
+    return offlineMessage(
+      `Decision: ${params.decision}. Calma is offline (missing OPENAI_API_KEY), but the app will still follow your family policy rules and guardian approvals.`,
+    );
   }
 
   const response = await client.chat.completions.create({
-    model: process.env.CLAWRENCE_MODEL || "gpt-4o-mini",
+    model: modelName(),
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -121,11 +138,11 @@ export async function celebrationMessage(params: {
 
   const client = getOpenAI();
   if (!client) {
-    return `Done! Receipt saved (CID: ${params.receiptCid.slice(0, 12)}...).`;
+    return offlineMessage(`Done! Receipt saved (CID: ${params.receiptCid.slice(0, 12)}...).`);
   }
 
   const response = await client.chat.completions.create({
-    model: process.env.CLAWRENCE_MODEL || "gpt-4o-mini",
+    model: modelName(),
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
@@ -153,11 +170,13 @@ export async function guardianExplanation(params: {
 }): Promise<string> {
   const client = getOpenAI();
   if (!client) {
-    return `Clawrence is offline (missing OPENAI_API_KEY). Request: "${params.description}" for ${params.currency}${params.amount}${params.isRecurring ? "/month" : ""}. Policy decision: ${params.decision}. Passport: Lv.${params.passportLevel}, streak ${params.passportStreak}wk.`;
+    return offlineMessage(
+      `Calma is offline (missing OPENAI_API_KEY). Request: "${params.description}" for ${params.currency}${params.amount}${params.isRecurring ? "/month" : ""}. Policy decision: ${params.decision}. Passport: Lv.${params.passportLevel}, streak ${params.passportStreak}wk.`,
+    );
   }
 
   const response = await client.chat.completions.create({
-    model: process.env.CLAWRENCE_MODEL || "gpt-4o-mini",
+    model: modelName(),
     messages: [
       {
         role: "system",
@@ -183,11 +202,13 @@ export async function answerQuestion(params: {
 }): Promise<string> {
   const client = getOpenAI();
   if (!client) {
-    return `Clawrence is offline (missing OPENAI_API_KEY). Your savings: ${params.savingsBalance} FLOW. Subscription reserve: ${params.subscriptionReserve} FLOW.`;
+    return offlineMessage(
+      `Calma is offline (missing OPENAI_API_KEY). Your savings: ${params.savingsBalance} FLOW. Subscription reserve: ${params.subscriptionReserve} FLOW.`,
+    );
   }
 
   const response = await client.chat.completions.create({
-    model: process.env.CLAWRENCE_MODEL || "gpt-4o-mini",
+    model: modelName(),
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {

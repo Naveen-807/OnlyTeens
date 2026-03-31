@@ -83,14 +83,24 @@ export const CONTRACTS = {
 export const ACCESS_ABI = parseAbi([
   "function registerFamily(bytes32 familyId, address guardian, address teen, address executor) external",
   "function updateExecutor(bytes32 familyId, address newExecutor) external",
+  "function approveExecutor(bytes32 familyId, address executor) external",
+  "function revokeExecutor(bytes32 familyId, address executor) external",
+  "function addTeen(bytes32 familyId, address teen) external",
+  "function removeTeen(bytes32 familyId, address teen) external",
   "function deactivateFamily(bytes32 familyId) external",
   "function getFamily(bytes32 familyId) external view returns (address guardian, address teen, address executor, bool active)",
+  "function getTeenCount(bytes32 familyId) external view returns (uint256)",
+  "function getTeenAt(bytes32 familyId, uint256 index) external view returns (address)",
   "function isGuardian(bytes32 familyId, address addr) external view returns (bool)",
   "function isTeen(bytes32 familyId, address addr) external view returns (bool)",
   "function isExecutor(bytes32 familyId, address addr) external view returns (bool)",
   "event FamilyRegistered(bytes32 indexed familyId, address guardian, address teen, address executor)",
   "event ExecutorUpdated(bytes32 indexed familyId, address oldExecutor, address newExecutor)",
   "event FamilyDeactivated(bytes32 indexed familyId)",
+  "event TeenAdded(bytes32 indexed familyId, address teen)",
+  "event TeenRemoved(bytes32 indexed familyId, address teen)",
+  "event ExecutorApproved(bytes32 indexed familyId, address executor)",
+  "event ExecutorRevoked(bytes32 indexed familyId, address executor)",
 ]);
 
 export const VAULT_ABI = parseAbi([
@@ -132,7 +142,7 @@ export const PASSPORT_ABI = parseAbi([
 
 export const POLICY_ABI = parseAbi([
   "function setPolicy(bytes32 familyId, uint256 encSingleCap, uint256 encRecurringCap, uint256 encTrustThreshold, uint256 encRiskFlags, bytes inputProof) external",
-  "function evaluateAction(bytes32 familyId, uint256 amount, uint8 currentPassportLevel, bool isRecurring) external",
+  "function evaluateAction(bytes32 familyId, address teen, uint256 amount, uint8 currentPassportLevel, bool isRecurring) external",
   "function getGuardianPolicyView(bytes32 familyId) external view returns (uint256 singleCap, uint256 recurringCap, uint256 trustThreshold, uint256 riskFlags)",
   "function getServerPolicyView(bytes32 familyId) external view returns (uint256 singleCap, uint256 recurringCap, uint256 trustThreshold, uint256 riskFlags)",
   "function getGuardianLatestDecisionView(bytes32 familyId) external view returns (uint256 decisionHandle, uint256 amount, bool isRecurring, address actor)",

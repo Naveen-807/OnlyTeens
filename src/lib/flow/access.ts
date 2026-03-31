@@ -40,6 +40,27 @@ export async function registerFamilyOnChain(params: {
   };
 }
 
+export async function addTeenOnChain(params: {
+  familyId: `0x${string}`;
+  teenAddress: `0x${string}`;
+}): Promise<{ txHash: string; explorerUrl: string }> {
+  ensureConfiguredContracts();
+  const account = getServiceAccount();
+
+  const txHash = await flowWalletClient.writeContract({
+    account,
+    address: CONTRACTS.access,
+    abi: ACCESS_ABI,
+    functionName: "addTeen",
+    args: [params.familyId, params.teenAddress],
+  });
+
+  return {
+    txHash,
+    explorerUrl: `https://evm-testnet.flowscan.io/tx/${txHash}`,
+  };
+}
+
 export async function updateExecutorOnChain(params: {
   guardianAccount: any;
   familyId: `0x${string}`;

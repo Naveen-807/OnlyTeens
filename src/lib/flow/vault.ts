@@ -49,6 +49,26 @@ export async function fundSubscription(
   };
 }
 
+export async function withdrawSavings(
+  account: any,
+  familyId: `0x${string}`,
+  teenAddress: `0x${string}`,
+  amountFlow: string,
+): Promise<{ txHash: string; explorerUrl: string }> {
+  const hash = await flowWalletClient.writeContract({
+    account,
+    address: CONTRACTS.vault,
+    abi: VAULT_ABI,
+    functionName: "withdrawSavings",
+    args: [familyId, teenAddress, parseEther(amountFlow)],
+  });
+
+  return {
+    txHash: hash,
+    explorerUrl: `https://evm-testnet.flowscan.io/tx/${hash}`,
+  };
+}
+
 export async function getBalances(
   familyId: `0x${string}`,
   teenAddress: `0x${string}`,
@@ -67,3 +87,7 @@ export async function getBalances(
   };
 }
 
+export async function getNativeWalletBalance(address: `0x${string}`): Promise<string> {
+  const balance = await flowPublicClient.getBalance({ address });
+  return formatEther(balance);
+}

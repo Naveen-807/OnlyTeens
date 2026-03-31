@@ -8,6 +8,7 @@ import { preActionExplanation, postDecisionExplanation, guardianExplanation, cel
 import { executeSafeSigning } from "@/lib/lit/executor";
 import { getClawrenceAccount } from "@/lib/lit/executorSession";
 import { evaluateAction } from "@/lib/zama/policy";
+import { getClawrenceExecutionContext } from "@/lib/vincent/execution";
 import { evaluateVincentGuardrailsAsync } from "@/lib/vincent/policy";
 import { uploadJSON } from "@/lib/storacha/client";
 import {
@@ -20,6 +21,7 @@ import { createApprovalRequest } from "@/lib/approvals/durableApprovals";
 import { flowToWei, inrToPaise } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
+import { buildLaneMetadata } from "@/lib/runtime/lanes";
 import type { ApprovalRequest, FlowResult, UserSession } from "@/lib/types";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
 
@@ -35,6 +37,12 @@ export async function requestSubscription(params: {
 }): Promise<FlowResult & { approvalRequest?: ApprovalRequest }> {
   try {
     assertContractConfigForDemo();
+    const lane = buildLaneMetadata({
+      session: params.session,
+      executionLane: "agent-assisted-flow",
+      approvalMode: "guardian-approval-required",
+      policyMode: "encrypted-live",
+    });
     const passportState = await getPassport(params.familyId, params.teenAddress);
 
     const preExplanation = await preActionExplanation({
@@ -50,10 +58,16 @@ export async function requestSubscription(params: {
 
     const { account: clawrenceAccount } = await getClawrenceAccount(
       params.familyId,
+      params.teenAddress,
+    );
+    const executionContext = await getClawrenceExecutionContext(
+      params.familyId,
+      params.teenAddress,
     );
 
     const policyResult = await evaluateAction({
       familyId: params.familyId,
+      teenAddress: params.teenAddress,
       amount: inrToPaise(params.monthlyAmount),
       passportLevel: passportState.level,
       isRecurring: true,
@@ -97,10 +111,12 @@ export async function requestSubscription(params: {
         success: false,
         decision,
         requiresApproval: false,
+        ...lane,
         zama: {
           decision,
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: policyResult.txHash || "",
+          source: policyResult.source,
         },
         clawrence: { preExplanation, postExplanation },
         error: "This subscription is blocked by family policy",
@@ -146,17 +162,22 @@ export async function requestSubscription(params: {
       teenStreak: passportState.weeklyStreak,
     });
 
-    return {
-      success: false,
-      decision,
-      requiresApproval: true,
-      approvalRequestId: approvalRequest.id,
-      approvalRequest,
-      zama: {
+      return {
+        success: false,
         decision,
-        contractAddress: CONTRACTS.policy,
-        evaluationTxHash: policyResult.txHash || "",
-      },
+        requiresApproval: true,
+        ...lane,
+        approvalRequestId: approvalRequest.id,
+        approvalRequest,
+        zama: {
+          decision,
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: policyResult.txHash || "",
+          source: policyResult.source,
+        },
+      executionMode: executionContext.executionMode,
+      fallbackActive: executionContext.fallbackActive,
+      vincent: executionContext.vincent,
       storacha: {
         receiptCid: pendingReceipt.cid,
         receiptUrl: pendingReceipt.url,
@@ -168,6 +189,8 @@ export async function requestSubscription(params: {
       success: false,
       decision: "BLOCKED",
       requiresApproval: false,
+      executionMode: "local-fallback",
+      fallbackActive: true,
       error: error?.message,
     };
   }
@@ -193,8 +216,18 @@ export async function executeApprovedSubscription(params: {
 }): Promise<FlowResult> {
   try {
     assertContractConfigForDemo();
+    const lane = buildLaneMetadata({
+      session: params.session,
+      executionLane: "agent-assisted-flow",
+      approvalMode: params.guardianApproved ? "guardian-approved" : "guardian-approval-required",
+      policyMode: params.zamaTxHash ? "encrypted-live" : "degraded",
+    });
     const { session: clawrenceSession, account: clawrenceAccount } =
-      await getClawrenceAccount(params.familyId);
+      await getClawrenceAccount(params.familyId, params.teenAddress);
+    const executionContext = await getClawrenceExecutionContext(
+      params.familyId,
+      params.teenAddress,
+    );
 
     const subscriptionRecipient =
       (process.env.SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}` | undefined) ||
@@ -216,6 +249,7 @@ export async function executeApprovedSubscription(params: {
         success: false,
         decision: params.decision as any,
         requiresApproval: false,
+        ...lane,
         guardrail: {
           decision: "BLOCK",
           reason: guardrails.reasons[0],
@@ -232,6 +266,7 @@ export async function executeApprovedSubscription(params: {
       guardianApproved: params.guardianApproved,
       amount: params.monthlyAmount,
       familyId: params.familyId,
+      teenAddress: params.teenAddress,
       txData: new Uint8Array([]),
       session: params.session,
       clawrencePublicKey:
@@ -244,16 +279,32 @@ export async function executeApprovedSubscription(params: {
         success: false,
         decision: params.decision as any,
         requiresApproval: false,
+        ...lane,
         zama: {
           decision: params.decision as any,
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: params.zamaTxHash || "",
+          source: params.zamaTxHash ? "encrypted" : "heuristic",
         },
         lit: {
           signed: false,
           actionCid: SAFE_EXECUTOR_CID,
           response: litResult.response,
         },
+        executionMode: litResult.executionMode,
+        fallbackActive: litResult.fallbackActive,
+        chipotle: {
+          configured: litResult.chipotle.configured,
+          accountId: litResult.chipotle.accountId,
+          groupId: litResult.chipotle.groupId,
+          pkpId: litResult.chipotle.pkpId,
+          walletId: litResult.chipotle.walletId,
+          safeExecutorCid: litResult.chipotle.safeExecutorCid,
+          usageKeyId: litResult.chipotle.usageKeyId,
+          usageKeyScope: litResult.chipotle.usageKeyScope,
+          mode: litResult.chipotle.mode,
+        },
+        vincent: executionContext.vincent,
         clawrence: { preExplanation: params.preExplanation, postExplanation: params.postExplanation },
         guardrail: {
           decision: "ALLOW",
@@ -319,8 +370,12 @@ export async function executeApprovedSubscription(params: {
       postExplanation: params.postExplanation,
       approvalCid: params.approvalCid,
       zamaTxHash: params.zamaTxHash,
+      schedulerBackend: scheduleResult.backend,
       scheduleTxHash: scheduleResult.txHash,
       scheduleId: scheduleResult.scheduleId,
+      scheduledExecutionId: scheduleResult.scheduledExecutionId,
+      scheduledExecutionExplorerUrl: scheduleResult.scheduledExecutionExplorerUrl,
+      nextExecutionAt: scheduleResult.nextExecutionAt,
       guardrails,
       litSignatureResponse: litResult.response,
     });
@@ -332,7 +387,22 @@ export async function executeApprovedSubscription(params: {
       {
         decision: params.decision,
         flow: { txHash: flowTx.txHash, explorerUrl: flowTx.explorerUrl },
+        ...lane,
         lit: { actionCid: SAFE_EXECUTOR_CID },
+        executionMode: litResult.executionMode,
+        fallbackActive: litResult.fallbackActive,
+        chipotle: {
+          configured: litResult.chipotle.configured,
+          accountId: litResult.chipotle.accountId,
+          groupId: litResult.chipotle.groupId,
+          pkpId: litResult.chipotle.pkpId,
+          walletId: litResult.chipotle.walletId,
+          safeExecutorCid: litResult.chipotle.safeExecutorCid,
+          usageKeyId: litResult.chipotle.usageKeyId,
+          usageKeyScope: litResult.chipotle.usageKeyScope,
+          mode: litResult.chipotle.mode,
+        },
+        vincent: executionContext.vincent,
         guardrails,
         zama: { contractAddress: CONTRACTS.policy },
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
@@ -342,6 +412,11 @@ export async function executeApprovedSubscription(params: {
           scheduleId: scheduleResult.scheduleId,
           label: params.serviceName,
           recipientAddress: subscriptionRecipient,
+          backend: scheduleResult.backend,
+          executionSource: scheduleResult.executionSource,
+          scheduledExecutionId: scheduleResult.scheduledExecutionId,
+          scheduledExecutionExplorerUrl: scheduleResult.scheduledExecutionExplorerUrl,
+          nextExecutionAt: scheduleResult.nextExecutionAt,
         },
         clawrence: { preExplanation: params.preExplanation },
       },
@@ -380,10 +455,11 @@ export async function executeApprovedSubscription(params: {
     });
 
     return {
-      success: true,
-      decision: params.decision as any,
-      requiresApproval: false,
-      flow: {
+        success: true,
+        decision: params.decision as any,
+        requiresApproval: false,
+        ...lane,
+        flow: {
         txHash: flowTx.txHash,
         explorerUrl: flowTx.explorerUrl,
         events: parsedEvents.events,
@@ -394,12 +470,27 @@ export async function executeApprovedSubscription(params: {
         source: guardrails.provider,
       },
       guardrails,
+      executionMode: litResult.executionMode,
+      fallbackActive: litResult.fallbackActive,
       lit: { signed: true, actionCid: SAFE_EXECUTOR_CID, response: litResult.response },
-      zama: {
-        decision: params.decision as any,
-        contractAddress: CONTRACTS.policy,
-        evaluationTxHash: params.zamaTxHash || "",
+      chipotle: {
+        configured: litResult.chipotle.configured,
+        accountId: litResult.chipotle.accountId,
+        groupId: litResult.chipotle.groupId,
+        pkpId: litResult.chipotle.pkpId,
+        walletId: litResult.chipotle.walletId,
+        safeExecutorCid: litResult.chipotle.safeExecutorCid,
+        usageKeyId: litResult.chipotle.usageKeyId,
+        usageKeyScope: litResult.chipotle.usageKeyScope,
+        mode: litResult.chipotle.mode,
       },
+      vincent: executionContext.vincent,
+        zama: {
+          decision: params.decision as any,
+          contractAddress: CONTRACTS.policy,
+          evaluationTxHash: params.zamaTxHash || "",
+          source: params.zamaTxHash ? "encrypted" : "heuristic",
+        },
       storacha: {
         receiptCid: storachaReceipt.cid,
         receiptUrl: storachaReceipt.url,
@@ -416,6 +507,11 @@ export async function executeApprovedSubscription(params: {
         scheduleId: scheduleResult.scheduleId,
         label: params.serviceName,
         recipientAddress: subscriptionRecipient,
+        backend: scheduleResult.backend,
+        executionSource: scheduleResult.executionSource,
+        scheduledExecutionId: scheduleResult.scheduledExecutionId,
+        scheduledExecutionExplorerUrl: scheduleResult.scheduledExecutionExplorerUrl,
+        nextExecutionAt: scheduleResult.nextExecutionAt,
       },
       clawrence: {
         preExplanation: params.preExplanation,
@@ -428,6 +524,8 @@ export async function executeApprovedSubscription(params: {
       success: false,
       decision: params.decision as any,
       requiresApproval: false,
+      executionMode: "local-fallback",
+      fallbackActive: true,
       error: error?.message,
     };
   }

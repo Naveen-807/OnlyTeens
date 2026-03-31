@@ -2,6 +2,7 @@
   "name": "proof18-ui",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,6 +12,7 @@
     "verify:strict": "node scripts/verify.mjs && node --import tsx scripts/preflight.ts",
     "preflight": "node --import tsx scripts/preflight.ts",
     "bootstrap": "npm ci && npm run preflight",
+    "pin:lit-action": "node --import tsx scripts/pinLitAction.ts",
     "hardhat:compile": "hardhat compile",
     "hardhat:test": "hardhat test",
     "hardhat:deploy:flow": "hardhat run scripts/deploy.cjs --network flowTestnet",
@@ -20,6 +22,7 @@
     "@gelatonetwork/relay-sdk": "^5.7.0",
     "@lit-protocol/lit-client": "^8.3.1",
     "@lit-protocol/networks": "^8.4.1",
+    "@lit-protocol/vincent-app-sdk": "^2.7.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",

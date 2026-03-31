@@ -1,10 +1,12 @@
 import "server-only";
 
 import { getFamilyByGuardian, getFamilyByTeen } from "@/lib/onboarding/familyService";
+import { getFlowRuntimeProfile } from "@/lib/flow/runtimeProfile";
 import { getBalances } from "@/lib/flow/vault";
 import { getPassport } from "@/lib/flow/passport";
 import { getPendingRequestsByFamily } from "@/lib/approvals/durableApprovals";
 import type {
+  ExecutionLane,
   UserSession,
   Role,
   TeenBalances,
@@ -28,17 +30,75 @@ export async function bootstrapSession(params: {
   pkpPublicKey: string;
   pkpTokenId: string;
   pkpAddress?: string;
-  authMethod: any;
+  authMethod?: any;
   address: string;
   authChannel?: AuthChannel;
   phoneNumber?: string;
   verificationId?: string;
 }): Promise<BootstrapResult> {
+  const flowRuntime = getFlowRuntimeProfile();
+
   // Step 1: Find family record
-  const family =
+  const familyRecord =
     params.role === "guardian"
       ? getFamilyByGuardian(params.address)
       : getFamilyByTeen(params.address);
+
+  const selectedTeen =
+    params.role === "teen" && familyRecord
+      ? familyRecord.teenAddress.toLowerCase() === params.address.toLowerCase()
+        ? null
+        : familyRecord.linkedTeens?.find(
+            (teen) => teen.active && teen.teenAddress.toLowerCase() === params.address.toLowerCase(),
+          ) || null
+      : null;
+
+  const family = familyRecord
+    ? {
+        ...familyRecord,
+        teenAddress: selectedTeen?.teenAddress || familyRecord.teenAddress,
+        teenPkpPublicKey:
+          selectedTeen?.teenPkpPublicKey || familyRecord.teenPkpPublicKey,
+        teenPkpTokenId: selectedTeen?.teenPkpTokenId || familyRecord.teenPkpTokenId,
+        calmaAddress:
+          selectedTeen?.calmaAddress || selectedTeen?.clawrenceAddress || familyRecord.calmaAddress || familyRecord.clawrenceAddress,
+        calmaPkpPublicKey:
+          selectedTeen?.calmaPkpPublicKey || selectedTeen?.clawrencePkpPublicKey || familyRecord.calmaPkpPublicKey || familyRecord.clawrencePkpPublicKey,
+        calmaPkpTokenId:
+          selectedTeen?.calmaPkpTokenId || selectedTeen?.clawrencePkpTokenId || familyRecord.calmaPkpTokenId || familyRecord.clawrencePkpTokenId,
+        clawrenceAddress:
+          selectedTeen?.calmaAddress || selectedTeen?.clawrenceAddress || familyRecord.calmaAddress || familyRecord.clawrenceAddress,
+        clawrencePkpPublicKey:
+          selectedTeen?.calmaPkpPublicKey || selectedTeen?.clawrencePkpPublicKey || familyRecord.calmaPkpPublicKey || familyRecord.clawrencePkpPublicKey,
+        clawrencePkpTokenId:
+          selectedTeen?.calmaPkpTokenId || selectedTeen?.clawrencePkpTokenId || familyRecord.calmaPkpTokenId || familyRecord.clawrencePkpTokenId,
+        chipotleTeenWalletId:
+          selectedTeen?.teenChipotleWalletId || familyRecord.chipotleTeenWalletId,
+        chipotleCalmaWalletId:
+          selectedTeen?.calmaChipotleWalletId || selectedTeen?.clawrenceChipotleWalletId || familyRecord.chipotleCalmaWalletId || familyRecord.chipotleClawrenceWalletId,
+        chipotleClawrenceWalletId:
+          selectedTeen?.calmaChipotleWalletId || selectedTeen?.clawrenceChipotleWalletId || familyRecord.chipotleCalmaWalletId || familyRecord.chipotleClawrenceWalletId,
+        chipotleGroupId:
+          selectedTeen?.chipotleGroupId || familyRecord.chipotleGroupId,
+        chipotleUsageKeyId:
+          selectedTeen?.chipotleUsageKeyId || familyRecord.chipotleUsageKeyId,
+        chipotleUsageApiKey:
+          selectedTeen?.chipotleUsageApiKey || familyRecord.chipotleUsageApiKey,
+        vincentWalletId:
+          selectedTeen?.vincentWalletId || familyRecord.vincentWalletId,
+        vincentWalletAddress:
+          selectedTeen?.vincentWalletAddress || familyRecord.vincentWalletAddress,
+        vincentAppId: selectedTeen?.vincentAppId || familyRecord.vincentAppId,
+        vincentAppVersion:
+          selectedTeen?.vincentAppVersion || familyRecord.vincentAppVersion,
+        vincentUserAccount:
+          selectedTeen?.vincentUserAccount || familyRecord.vincentUserAccount,
+        vincentJwtAuthenticated:
+          selectedTeen?.vincentJwtAuthenticated || familyRecord.vincentJwtAuthenticated,
+      }
+    : null;
+  const executionLaneModes: ExecutionLane[] =
+    family?.executionLaneModes || ["direct-flow", "agent-assisted-flow", "guardian-autopilot-flow"];
 
   // Step 2: Build session (sessionSigs will be populated client-side via Lit)
   const session: UserSession = {
@@ -53,7 +113,37 @@ export async function bootstrapSession(params: {
     authMethod: params.authMethod,
     authChannel: params.authChannel,
     verificationId: params.verificationId,
+    walletMode: family?.walletMode || flowRuntime.walletMode,
+    gasMode: family?.gasMode || flowRuntime.gasMode,
+    flowMedium: family?.flowMedium || "FLOW",
+    flowNativeFeaturesUsed:
+      family?.flowNativeFeaturesUsed || flowRuntime.flowNativeFeaturesUsed,
+    guardianAutopilotEnabled: family?.guardianAutopilotEnabled || false,
+    chipotle: {
+      mode: params.authMethod?.metadata?.chipotleWalletId ? "live" : "local",
+      walletId: params.authMethod?.metadata?.chipotleWalletId,
+      accountId: family?.chipotleAccountId,
+      groupId: family?.chipotleGroupId,
+      usageKeyId: family?.chipotleUsageKeyId,
+    },
+    vincent: {
+      mode: family?.vincentWalletAddress ? "live" : "fallback",
+      walletId: family?.vincentWalletId,
+      walletAddress: family?.vincentWalletAddress,
+      appId: family?.vincentAppId,
+      appVersion: family?.vincentAppVersion,
+      userAccount: family?.vincentUserAccount,
+        jwtAuthenticated: family?.vincentJwtAuthenticated,
+    },
   };
+
+  if (family) {
+    session.vincent = {
+      mode: session.vincent?.mode || "fallback",
+      ...session.vincent,
+      agentWalletAddress: family.vincentWalletAddress,
+    };
+  }
 
   if (!family) {
     return {

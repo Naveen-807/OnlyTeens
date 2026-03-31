@@ -5,12 +5,9 @@ import path from "path";
 
 import { keccak256, stringToBytes } from "viem";
 
+import { getFlowRuntimeProfile } from "@/lib/flow/runtimeProfile";
 import { getStoredFlowWallet } from "@/lib/flow/walletSession";
-import { getLitClient } from "@/lib/lit/client";
-import {
-  getLitMintingAccount,
-  mapLitMintingError,
-} from "@/lib/lit/auth";
+import { isChipotleConfigured } from "@/lib/lit/chipotle";
 import { normalizeVerifiedPhone } from "@/lib/auth/twilio";
 import type { Role, UserSession } from "@/lib/types";
 
@@ -19,9 +16,11 @@ type StoredPhoneSession = {
   role: Role;
   phoneKey: string;
   flowAddress: string;
+  familyId?: string;
   pkpPublicKey: string;
   pkpTokenId: string;
   pkpAddress: string;
+  chipotleWalletId?: string;
   address?: string;
   createdAt: string;
   updatedAt: string;
@@ -74,27 +73,10 @@ export async function getOrCreatePhoneSession(params: {
     saveStore(store);
     return buildSessionFromStored(normalizedExisting, params.verificationSid);
   }
-
-  const client = await getLitClient();
-  const mintingAccount = getLitMintingAccount();
-
-  let mintResult: any;
-  try {
-    mintResult = await (client as any).mintWithEoa({
-      account: mintingAccount,
-    });
-  } catch (error) {
-    throw mapLitMintingError(error, mintingAccount.address);
-  }
-
-  const pkp = mintResult?.pkp || mintResult?.pkpData?.data || mintResult?.data;
-  const pkpPublicKey = pkp?.publicKey || pkp?.pubkey;
-  const pkpTokenId = pkp?.tokenId || mintResult?.tokenId || "";
-  const pkpAddress = pkp?.ethAddress || mintResult?.ethAddress || "";
-
-  if (!pkpPublicKey || !pkpTokenId || !pkpAddress) {
-    throw new Error("Failed to mint phone PKP");
-  }
+  const digest = keccak256(stringToBytes(`proof18-phone-pkp:${key}`));
+  const pkpPublicKey = `${digest}${digest.slice(2)}` as `0x${string}`;
+  const pkpTokenId = digest;
+  const pkpAddress = `0x${digest.slice(2, 42)}` as `0x${string}`;
 
   const stored: StoredPhoneSession = {
     phoneNumber,
@@ -104,6 +86,7 @@ export async function getOrCreatePhoneSession(params: {
     pkpPublicKey,
     pkpTokenId,
     pkpAddress,
+    chipotleWalletId: `wallet_${digest.slice(2, 18)}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -131,18 +114,22 @@ function buildSessionFromStored(
   stored: StoredPhoneSession,
   verificationSid: string,
 ): UserSession {
+  const flowRuntime = getFlowRuntimeProfile();
   return {
     role: stored.role,
     address: stored.flowAddress,
     pkpPublicKey: stored.pkpPublicKey,
     pkpTokenId: stored.pkpTokenId,
     pkpAddress: stored.pkpAddress,
-    familyId: "",
+    familyId: stored.familyId || "",
     phoneNumber: stored.phoneNumber,
     verificationSid,
     authProvider: "twilio-verify",
+    walletMode: flowRuntime.walletMode,
+    gasMode: flowRuntime.gasMode,
+    flowNativeFeaturesUsed: flowRuntime.flowNativeFeaturesUsed,
     authMethod: {
-      provider: "twilio-verify",
+      provider: isChipotleConfigured() ? "chipotle-phone-otp" : "twilio-verify",
       role: stored.role,
       phoneNumber: stored.phoneNumber,
       verificationSid,
@@ -154,8 +141,46 @@ function buildSessionFromStored(
         sessionKey: stored.phoneKey,
         flowAddress: stored.flowAddress,
         pkpAddress: stored.pkpAddress,
+        chipotleWalletId: stored.chipotleWalletId,
       },
+    },
+    chipotle: {
+      mode: isChipotleConfigured() ? "live" : "local",
+      walletId: stored.chipotleWalletId,
     },
     sessionSigs: null,
   };
+}
+
+export function bindPhoneSessionToWallet(params: {
+  role: Role;
+  phoneNumber: string;
+  familyId: string;
+  walletAddress: string;
+  pkpPublicKey: string;
+  pkpTokenId: string;
+  pkpAddress: string;
+  chipotleWalletId?: string;
+}) {
+  const phoneNumber = normalizeVerifiedPhone(params.phoneNumber);
+  const key = sessionKey(params.role, phoneNumber);
+  const store = loadStore();
+  const existing = store[key];
+  const now = new Date().toISOString();
+
+  store[key] = {
+    phoneNumber,
+    role: params.role,
+    phoneKey: existing?.phoneKey || toHexSessionKey(params.role, phoneNumber),
+    flowAddress: params.walletAddress,
+    familyId: params.familyId,
+    pkpPublicKey: params.pkpPublicKey,
+    pkpTokenId: params.pkpTokenId,
+    pkpAddress: params.pkpAddress,
+    chipotleWalletId: params.chipotleWalletId,
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
+  };
+
+  saveStore(store);
 }

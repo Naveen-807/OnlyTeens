@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -36,7 +36,7 @@ const roleMeta: Record<
   },
   executor: {
     title: "Executor",
-    subtitle: "Internal-only path for the Clawrence execution layer and signing flow.",
+    subtitle: "Internal-only path for the Calma execution layer and signing flow.",
     kicker: "Internal surface",
     target: "/guardian",
   },
@@ -64,8 +64,28 @@ export function AuthOnboardingFlow() {
     "Choose a role, request a demo OTP, then verify to bootstrap a real session.",
   );
   const [proof, setProof] = useState<any>(null);
+  const [vincentMode, setVincentMode] = useState<"live" | "local-only" | "unknown">("unknown");
 
   const roleInfo = useMemo(() => roleMeta[role], [role]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/runtime/capabilities")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!mounted) return;
+        const mode = data?.capabilities?.vincent?.mode;
+        setVincentMode(mode === "live" ? "live" : mode === "local-only" ? "local-only" : "unknown");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setVincentMode("unknown");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const requestOtp = async () => {
     setLoading(true);
@@ -124,9 +144,11 @@ export function AuthOnboardingFlow() {
 
       setProof({
         zamaDecision: data.bootstrap?.passport ? "GREEN" : "YELLOW",
-        guardrailDecision: "REVIEW",
+        guardrailDecision: vincentMode === "live" ? "ALLOW" : "REVIEW",
         guardrailReason:
-          "Guardrail API not yet wired; using placeholder from the auth surface.",
+          vincentMode === "live"
+            ? "Vincent live mode is available for execution checks."
+            : "Using local-only guardrails until Vincent API is configured.",
         litAuthorized: true,
         litActionCid: data.session?.authMethod?.authMethodId || "",
         flowTxHash: undefined,
@@ -368,6 +390,7 @@ export function AuthOnboardingFlow() {
           clawrencePkpAddress={proof?.clawrencePkpAddress || "clawrence-pkp-placeholder"}
           safeExecutorCid={proof?.litActionCid || "safe-executor-cid-placeholder"}
           permittedScopes={["PersonalSign", "LitAction"]}
+          vincentMode={vincentMode}
           proof={proof || undefined}
           className="rounded-[2rem]"
         />

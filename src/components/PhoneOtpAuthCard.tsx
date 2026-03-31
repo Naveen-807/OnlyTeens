@@ -123,7 +123,7 @@ export function PhoneOtpAuthCard({
         </CardTitle>
         <CardDescription>
           {subtitle ||
-            "Verify a phone number with a real OTP, then bootstrap the Proof18 session and delegated execution surface."}
+            "Verify a phone number with a real OTP, then bootstrap the Calma session and Flow-linked app wallet."}
         </CardDescription>
       </CardHeader>
 

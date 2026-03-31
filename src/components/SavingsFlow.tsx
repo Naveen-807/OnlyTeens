@@ -10,6 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
+
+function getFailureLayer(result: FlowResult): string {
+  if (result.guardrail?.decision === "BLOCK") {
+    return `Guardrails (${result.guardrail.source || "vincent-local"})`;
+  }
+  if (result.lit && !result.lit.signed) {
+    return "Lit execution boundary";
+  }
+  if (result.decision === "BLOCKED") {
+    return "Zama policy decision";
+  }
+  if (result.error?.toLowerCase().includes("transaction")) {
+    return "Flow execution";
+  }
+  return "Execution pipeline";
+}
 
 export function SavingsFlow({
   session,
@@ -54,7 +71,11 @@ export function SavingsFlow({
           clawrencePkpTokenId,
         }),
       });
-      setResult(await res.json());
+      const data = (await res.json()) as FlowResult;
+      setResult(data);
+      if (data.success) {
+        await useAuthStore.getState().refreshState();
+      }
     } finally {
       setLoading(false);
     }
@@ -202,6 +223,48 @@ export function SavingsFlow({
                     <> • Zama verified</>
                   )}
                 </p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {result.executionMode ? (
+                    <Badge className="border-emerald-500/30 bg-emerald-950/50 text-[10px] text-emerald-300">
+                      {result.executionMode}
+                    </Badge>
+                  ) : null}
+                  {result.fallbackActive ? (
+                    <Badge className="border-slate-500/30 bg-slate-950/50 text-[10px] text-slate-300">
+                      fallback
+                    </Badge>
+                  ) : null}
+                  {result.zama?.source ? (
+                    <Badge className="border-violet-500/30 bg-violet-950/50 text-[10px] text-violet-300">
+                      Zama {result.zama.source}
+                    </Badge>
+                  ) : null}
+                  {result.guardrails?.provider ? (
+                    <Badge className="border-amber-500/30 bg-amber-950/50 text-[10px] text-amber-300">
+                      {result.guardrails.provider}
+                    </Badge>
+                  ) : null}
+                  {result.lit?.actionCid ? (
+                    <Badge className="border-blue-500/30 bg-blue-950/50 text-[10px] text-blue-300">
+                      Lit executor
+                    </Badge>
+                  ) : null}
+                  {result.vincent?.walletAddress ? (
+                    <Badge className="border-amber-500/30 bg-amber-950/50 text-[10px] text-amber-300">
+                      Vincent wallet
+                    </Badge>
+                  ) : null}
+                  {result.schedule?.backend ? (
+                    <Badge className={cn(
+                      "text-[10px]",
+                      result.schedule.backend === "flow-native-scheduled"
+                        ? "border-emerald-500/30 bg-emerald-950/50 text-emerald-300"
+                        : "border-slate-500/30 bg-slate-950/50 text-slate-300"
+                    )}>
+                      {result.schedule.backend}
+                    </Badge>
+                  ) : null}
+                </div>
               </div>
             </div>
 
@@ -238,6 +301,23 @@ export function SavingsFlow({
               )}
             </div>
 
+            {result.schedule ? (
+              <div className="rounded-lg border border-border/40 bg-background/40 p-3">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Recurring automation
+                </p>
+                <p className="mt-1 text-sm text-foreground">
+                  {result.schedule.label}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Backend: {result.schedule.backend || "evm-manual"}
+                  {result.schedule.nextExecutionAt
+                    ? ` • next run ${new Date(result.schedule.nextExecutionAt).toLocaleString()}`
+                    : ""}
+                </p>
+              </div>
+            ) : null}
+
             {result.clawrence?.celebration && (
               <div className="rounded-lg border border-primary/20 bg-primary/10 p-3">
                 <p className="text-sm text-primary">{result.clawrence.celebration}</p>
@@ -245,7 +325,12 @@ export function SavingsFlow({
             )}
 
             {result.error && (
-              <p className="text-sm text-rose-400">{result.error}</p>
+              <div className="rounded-lg border border-rose-500/20 bg-rose-950/40 p-3">
+                <p className="text-xs uppercase tracking-wider text-rose-300/80">
+                  Blocked at: {getFailureLayer(result)}
+                </p>
+                <p className="mt-1 text-sm text-rose-300">{result.error}</p>
+              </div>
             )}
           </CardContent>
         </Card>

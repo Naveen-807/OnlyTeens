@@ -19,7 +19,7 @@ const teenNav: { id: TeenScreen; label: string; icon: React.ElementType }[] = [
   { id: "subscriptions", label: "Subscriptions", icon: BriefcaseBusiness },
   { id: "passport", label: "Passport", icon: BookHeart },
   { id: "history", label: "History", icon: ScrollText },
-  { id: "chat", label: "Clawrence Chat", icon: Bot },
+  { id: "chat", label: "Calma Chat", icon: Bot },
 ];
 
 const parentNav: { id: ParentScreen; label: string; icon: React.ElementType }[] = [
@@ -74,7 +74,7 @@ export function Proof18Shell({
                 Guided money, private rules, revocable autonomy.
               </h1>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Flow executes. Zama protects policy on Sepolia. Vincent and Lit keep Clawrence inside a bounded mandate.
+                Flow executes. Zama protects policy on Sepolia. Vincent and Lit keep Calma inside a bounded mandate.
               </p>
               <div className="mt-4">
                 <HoverBorderGradient as="div" containerClassName="rounded-full">
@@ -139,7 +139,7 @@ export function Proof18Shell({
                   {actor === "teen" ? "teen operator view" : "guardian control view"}
                 </p>
                 <div className="mt-2 text-[clamp(1.8rem,3vw,3rem)] font-semibold leading-none tracking-tight text-foreground" style={{ fontFamily: '"Iowan Old Style", "Palatino Linotype", serif' }}>
-                  <SpecialText>{actor === "teen" ? "Clawrence keeps it understandable." : "Authority stays with the guardian."}</SpecialText>
+                  <SpecialText>{actor === "teen" ? "Calma keeps it understandable." : "Authority stays with the guardian."}</SpecialText>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

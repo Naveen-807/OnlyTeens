@@ -53,7 +53,7 @@ function ImageDialog({ imageUrl, onClose }: { imageUrl: string | null; onClose: 
 }
 
 export function ClawrencePromptBox({
-  placeholder = "Ask Clawrence about spending, saving, subscriptions, or approval risk...",
+  placeholder = "Ask Calma about spending, saving, subscriptions, or approval risk...",
   onSend,
   isLoading,
 }: {

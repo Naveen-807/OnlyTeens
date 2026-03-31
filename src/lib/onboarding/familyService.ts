@@ -1,5 +1,5 @@
 import { keccak256, toUtf8Bytes } from "ethers";
-import type { FamilyRecord } from "@/lib/types/onboarding";
+import type { FamilyRecord, LinkedTeenAccount } from "@/lib/types/onboarding";
 
 // ─── Durable storage (file-based for hackathon) ───
 import * as fs from "fs";
@@ -7,6 +7,39 @@ import * as path from "path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const FAMILIES_FILE = path.join(DATA_DIR, "families.json");
+
+function normalizeLinkedTeen(teen: LinkedTeenAccount) {
+  return {
+    ...teen,
+    calmaAddress: teen.calmaAddress || teen.clawrenceAddress,
+    calmaPkpPublicKey: teen.calmaPkpPublicKey || teen.clawrencePkpPublicKey,
+    calmaPkpTokenId: teen.calmaPkpTokenId || teen.clawrencePkpTokenId,
+    calmaChipotleWalletId: teen.calmaChipotleWalletId || teen.clawrenceChipotleWalletId,
+    clawrenceAddress: teen.clawrenceAddress || teen.calmaAddress || "",
+    clawrencePkpPublicKey: teen.clawrencePkpPublicKey || teen.calmaPkpPublicKey || "",
+    clawrencePkpTokenId: teen.clawrencePkpTokenId || teen.calmaPkpTokenId || "",
+    clawrenceChipotleWalletId:
+      teen.clawrenceChipotleWalletId || teen.calmaChipotleWalletId,
+  };
+}
+
+function normalizeFamilyRecord(family: FamilyRecord): FamilyRecord {
+  return {
+    ...family,
+    calmaAddress: family.calmaAddress || family.clawrenceAddress,
+    calmaPkpPublicKey: family.calmaPkpPublicKey || family.clawrencePkpPublicKey,
+    calmaPkpTokenId: family.calmaPkpTokenId || family.clawrencePkpTokenId,
+    chipotleCalmaWalletId:
+      family.chipotleCalmaWalletId || family.chipotleClawrenceWalletId,
+    clawrenceAddress: family.clawrenceAddress || family.calmaAddress || "",
+    clawrencePkpPublicKey:
+      family.clawrencePkpPublicKey || family.calmaPkpPublicKey || "",
+    clawrencePkpTokenId: family.clawrencePkpTokenId || family.calmaPkpTokenId || "",
+    chipotleClawrenceWalletId:
+      family.chipotleClawrenceWalletId || family.chipotleCalmaWalletId,
+    linkedTeens: family.linkedTeens?.map(normalizeLinkedTeen) || [],
+  };
+}
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -16,7 +49,13 @@ function ensureDataDir() {
 export function loadFamilies(): Record<string, FamilyRecord> {
   ensureDataDir();
   try {
-    return JSON.parse(fs.readFileSync(FAMILIES_FILE, "utf-8"));
+    const raw = JSON.parse(fs.readFileSync(FAMILIES_FILE, "utf-8")) as Record<
+      string,
+      FamilyRecord
+    >;
+    return Object.fromEntries(
+      Object.entries(raw).map(([familyId, family]) => [familyId, normalizeFamilyRecord(family)]),
+    );
   } catch {
     return {};
   }
@@ -25,7 +64,7 @@ export function loadFamilies(): Record<string, FamilyRecord> {
 export function saveFamily(family: FamilyRecord): void {
   ensureDataDir();
   const families = loadFamilies();
-  families[family.familyId] = family;
+  families[family.familyId] = normalizeFamilyRecord(family);
   fs.writeFileSync(FAMILIES_FILE, JSON.stringify(families, null, 2));
 }
 
@@ -45,7 +84,11 @@ export function getFamilyByTeen(teenAddress: string): FamilyRecord | null {
   return (
     Object.values(families).find(
       (f) =>
-        f.teenAddress.toLowerCase() === teenAddress.toLowerCase() && f.active
+        (f.teenAddress.toLowerCase() === teenAddress.toLowerCase() ||
+          f.linkedTeens?.some(
+            (teen) => teen.active && teen.teenAddress.toLowerCase() === teenAddress.toLowerCase(),
+          )) &&
+        f.active
     ) || null
   );
 }

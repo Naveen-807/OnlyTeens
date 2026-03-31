@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { SAFE_EXECUTOR_CID } from "@/lib/constants";
-import { assertLiveMode, isLiveMode } from "@/lib/runtime/liveMode";
+import { assertLiveDependency, assertLiveMode, isLiveMode } from "@/lib/runtime/liveMode";
 import type { FamilyRecord } from "@/lib/types/onboarding";
 
 const CHIPOTLE_BASE_URL =
@@ -52,7 +52,7 @@ function walletFromFamily(params: {
     publicKey: (params.publicKey || makePublicKey(params.seed)) as `0x${string}`,
     tokenId: params.tokenId || makeTokenId(params.seed),
     walletAddress: (params.address || makeHexAddress(params.seed)) as `0x${string}`,
-    mode: "local",
+    mode: params.walletId ? "live" : "local",
   };
 }
 
@@ -290,9 +290,10 @@ export async function ensureFamilyChipotleProvision(params: {
       : params.family?.linkedTeens?.find((teen) => teen.active && teen.teenAddress === params.teenAddress);
 
   if (!isChipotleConfigured()) {
-    assertLiveMode(
+    assertLiveDependency(
       false,
-      "CHIPOTLE_UNAVAILABLE:Live Chipotle provisioning is required in live mode",
+      "LIVE_SIGNER_UNAVAILABLE",
+      "Live Chipotle provisioning is required in live mode",
     );
     const local = localProvision({
       familyId: params.familyId,
@@ -380,7 +381,11 @@ export async function ensureFamilyChipotleProvision(params: {
         );
 
   if (!account?.accountApiKey) {
-    assertLiveMode(false, "CHIPOTLE_UNAVAILABLE:Failed to create a live Chipotle account");
+    assertLiveDependency(
+      false,
+      "LIVE_SIGNER_UNAVAILABLE",
+      "Failed to create a live Chipotle account",
+    );
     return localProvision({
       familyId: params.familyId,
       guardianAddress: params.guardianAddress,
@@ -389,6 +394,14 @@ export async function ensureFamilyChipotleProvision(params: {
     });
   }
 
+  const liveGuardianWallet = params.family
+    ? null
+    : await createLiveWallet(account.accountApiKey, `${params.familyId}:guardian`);
+  assertLiveDependency(
+    params.family ? true : Boolean(liveGuardianWallet),
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Failed to create guardian Chipotle wallet",
+  );
   const guardianWallet = params.family
     ? walletFromFamily({
         address: params.family.guardianAddress,
@@ -397,8 +410,16 @@ export async function ensureFamilyChipotleProvision(params: {
         walletId: params.family.chipotleGuardianWalletId,
         seed: `${params.familyId}:guardian`,
       })
-    : (await createLiveWallet(account.accountApiKey, `${params.familyId}:guardian`)) ||
+    : liveGuardianWallet ||
       createLocalWallet(`${params.familyId}:guardian`);
+  const liveTeenWallet = existingTeen
+    ? null
+    : await createLiveWallet(account.accountApiKey, `${params.familyId}:teen:${params.teenAddress}`);
+  assertLiveDependency(
+    existingTeen ? true : Boolean(liveTeenWallet),
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Failed to create teen Chipotle wallet",
+  );
   const teenWallet =
     existingTeen
       ? walletFromFamily({
@@ -412,8 +433,16 @@ export async function ensureFamilyChipotleProvision(params: {
           seed: `${params.familyId}:teen:${params.teenAddress}`,
         })
       :
-    (await createLiveWallet(account.accountApiKey, `${params.familyId}:teen:${params.teenAddress}`)) ||
+    liveTeenWallet ||
     createLocalWallet(`${params.familyId}:teen:${params.teenAddress}`);
+  const liveCalmaWallet = existingTeen
+    ? null
+    : await createLiveWallet(account.accountApiKey, `${params.familyId}:calma:${params.teenAddress}`);
+  assertLiveDependency(
+    existingTeen ? true : Boolean(liveCalmaWallet),
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Failed to create Calma Chipotle wallet",
+  );
   const calmaWallet =
     existingTeen
       ? walletFromFamily({
@@ -429,17 +458,28 @@ export async function ensureFamilyChipotleProvision(params: {
           seed: `${params.familyId}:calma:${params.teenAddress}`,
         })
       :
-    (await createLiveWallet(account.accountApiKey, `${params.familyId}:calma:${params.teenAddress}`)) ||
+    liveCalmaWallet ||
     createLocalWallet(`${params.familyId}:calma:${params.teenAddress}`);
 
+  const createdGroupId =
+    existingTeen && "chipotleGroupId" in existingTeen
+      ? existingTeen.chipotleGroupId
+      : params.family?.teenAddress === params.teenAddress
+        ? params.family?.chipotleGroupId
+        : await createLiveGroup(
+            account.accountApiKey,
+            `Proof18 ${params.familyId.slice(0, 8)} Teen Group`,
+            `Scoped execution group for teen ${params.teenAddress}`,
+          );
+  assertLiveDependency(
+    Boolean(createdGroupId),
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Failed to create Chipotle execution group",
+  );
   const groupId =
     (existingTeen && "chipotleGroupId" in existingTeen ? existingTeen.chipotleGroupId : undefined) ||
     (params.family?.teenAddress === params.teenAddress ? params.family?.chipotleGroupId : undefined) ||
-    (await createLiveGroup(
-      account.accountApiKey,
-      `Proof18 ${params.familyId.slice(0, 8)} Teen Group`,
-      `Scoped execution group for teen ${params.teenAddress}`,
-    )) ||
+    createdGroupId ||
     makeId("group", `${params.familyId}:${params.teenAddress}`);
 
   await addActionToLiveGroup(account.accountApiKey, groupId, safeExecutorCid);
@@ -464,6 +504,12 @@ export async function ensureFamilyChipotleProvision(params: {
       usageKeyId: makeId("usage", `${groupId}:execute`),
       usageApiKey: undefined,
     };
+
+  assertLiveDependency(
+    Boolean(usageKey.usageApiKey),
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Failed to create execute-only Chipotle usage key",
+  );
 
   return {
     accountId: account.accountId,

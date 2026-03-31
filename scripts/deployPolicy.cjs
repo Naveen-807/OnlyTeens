@@ -1,5 +1,25 @@
 /* eslint-disable no-console */
+const fs = require("node:fs");
 const hre = require("hardhat");
+
+function readJson(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function mergeContracts(existing, next) {
+  return {
+    generatedAt: new Date().toISOString(),
+    contracts: {
+      ...(existing?.contracts || {}),
+      ...next,
+    },
+  };
+}
 
 function getAccessAddressForPolicy() {
   const fromEnv =
@@ -26,9 +46,37 @@ async function main() {
   const policy = await Policy.deploy(accessAddress);
   await policy.waitForDeployment();
   const address = await policy.getAddress();
+  const txHash = policy.deploymentTransaction()?.hash;
 
   console.log(`Policy deployed: ${address}`);
   console.log(`Explorer: https://sepolia.etherscan.io/address/${address}`);
+
+  const deployments = mergeContracts(readJson("deployments.json"), {
+    policy: {
+      address,
+      explorer: `https://sepolia.etherscan.io/address/${address}`,
+      explorerUrl: `https://sepolia.etherscan.io/address/${address}`,
+      deploymentTxHash: txHash,
+      chainId: 11155111,
+      network: "Ethereum Sepolia",
+    },
+  });
+  fs.writeFileSync("deployments.json", JSON.stringify(deployments, null, 2));
+  console.log("deployments.json updated with policy.");
+
+  const health = mergeContracts(readJson("deployment-health.json"), {
+    policy: {
+      name: "policy",
+      chainId: 11155111,
+      network: "Ethereum Sepolia",
+      address,
+      explorerUrl: `https://sepolia.etherscan.io/address/${address}`,
+      deploymentTxHash: txHash,
+      lastVerifiedAt: null,
+    },
+  });
+  fs.writeFileSync("deployment-health.json", JSON.stringify(health, null, 2));
+  console.log("deployment-health.json updated with policy.");
 }
 
 main().catch((error) => {

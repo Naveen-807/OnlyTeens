@@ -7,6 +7,12 @@ import { privateKeyToAccount } from "viem/accounts";
 import { config as loadEnv } from "dotenv";
 
 import { LIVE_REQUIRED_ENV } from "../src/lib/runtime/config";
+import {
+  resolveDeploymentContract,
+  writeDeploymentHealthArtifact,
+  type DeploymentArtifact,
+  type DeploymentContractKey,
+} from "../src/lib/runtime/deploymentArtifacts";
 import { normalizePrivateKeyEnv } from "../src/lib/runtime/privateKey";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -24,6 +30,7 @@ type DeploymentShape = {
     vault?: { address?: string };
     scheduler?: { address?: string };
     passport?: { address?: string };
+    policy?: { address?: string };
   };
 };
 
@@ -42,12 +49,11 @@ function requiredEnv(name: string): string {
 
 function contractAddressFromEnvOrDeploy(
   envName: string,
-  deployName?: "access" | "vault" | "scheduler" | "passport",
+  deployName?: DeploymentContractKey,
 ) {
   const envValue = process.env[envName];
   if (envValue) return envValue;
-  if (!deployName) return undefined;
-  return getDeploymentContract(deployName);
+  return resolveDeploymentContract(deployName || "access")?.address || (deployName ? getDeploymentContract(deployName as "access" | "vault" | "scheduler" | "passport") : undefined);
 }
 
 function assertNonZeroAddress(name: string, value?: string) {
@@ -110,6 +116,35 @@ async function assertWalletLooksFunded(
   console.log(`  ${label} wallet funded (${balance.toString()} wei)`);
 }
 
+async function assertContractBytecode(params: {
+  label: string;
+  address: `0x${string}`;
+  rpcUrl: string;
+  chain: "FLOW" | "SEPOLIA";
+}) {
+  const resolvedChain =
+    params.chain === "FLOW"
+      ? {
+          id: 545,
+          name: "Flow EVM Testnet",
+          nativeCurrency: { name: "FLOW", symbol: "FLOW", decimals: 18 },
+          rpcUrls: { default: { http: [params.rpcUrl] } },
+        }
+      : {
+          id: 11155111,
+          name: "Sepolia",
+          nativeCurrency: { name: "Sepolia Ether", symbol: "SEP", decimals: 18 },
+          rpcUrls: { default: { http: [params.rpcUrl] } },
+        };
+
+  const client = createPublicClient({ chain: resolvedChain, transport: http(params.rpcUrl) });
+  const bytecode = await client.getBytecode({ address: params.address });
+  if (!bytecode || bytecode === "0x") {
+    throw new Error(`Deployment mismatch: ${params.label} has no deployed bytecode at ${params.address}`);
+  }
+  console.log(`  ${params.label} bytecode present`);
+}
+
 async function assertLitActionCidResolvable(cid: string) {
   const url = `https://ipfs.io/ipfs/${cid}`;
   const response = await fetch(url, { method: "HEAD" });
@@ -117,6 +152,33 @@ async function assertLitActionCidResolvable(cid: string) {
     throw new Error(`Lit Action CID not resolvable on ipfs.io: ${cid}`);
   }
   console.log("  Lit Action CID resolvable");
+}
+
+async function assertVincentAuthSurface() {
+  const apiKey = requiredEnv("VINCENT_API_KEY");
+  const appId = requiredEnv("VINCENT_APP_ID");
+  const controller = getPrivateKeyAccount(
+    "CALMA_OPERATOR_PRIVATE_KEY",
+    process.env.CALMA_OPERATOR_PRIVATE_KEY,
+  );
+  if (!controller) {
+    throw new Error("Missing CALMA_OPERATOR_PRIVATE_KEY for Vincent auth probe");
+  }
+  const response = await fetch(`https://api.heyvincent.ai/user/${appId}/agent-account`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      userControllerAddress: controller.address,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Vincent auth surface is unreachable: HTTP ${response.status}`);
+  }
+  console.log("  Vincent auth surface reachable");
 }
 
 function assertStorachaCreds() {
@@ -186,6 +248,36 @@ async function main() {
   const sepoliaRpc = requiredEnv("SEPOLIA_RPC_URL");
   await assertRpcReachable("FLOW", flowRpc);
   await assertRpcReachable("SEPOLIA", sepoliaRpc);
+  await assertContractBytecode({
+    label: "access",
+    address: access as `0x${string}`,
+    rpcUrl: flowRpc,
+    chain: "FLOW",
+  });
+  await assertContractBytecode({
+    label: "vault",
+    address: vault as `0x${string}`,
+    rpcUrl: flowRpc,
+    chain: "FLOW",
+  });
+  await assertContractBytecode({
+    label: "scheduler",
+    address: scheduler as `0x${string}`,
+    rpcUrl: flowRpc,
+    chain: "FLOW",
+  });
+  await assertContractBytecode({
+    label: "passport",
+    address: passport as `0x${string}`,
+    rpcUrl: flowRpc,
+    chain: "FLOW",
+  });
+  await assertContractBytecode({
+    label: "policy",
+    address: policy as `0x${string}`,
+    rpcUrl: sepoliaRpc,
+    chain: "SEPOLIA",
+  });
 
   const actionCid =
     process.env.NEXT_PUBLIC_SAFE_EXECUTOR_CID || process.env.SAFE_EXECUTOR_CID;
@@ -219,6 +311,26 @@ async function main() {
     assertNonZeroAddress("zamaAcl", process.env.ZAMA_ACL_CONTRACT_ADDRESS);
     assertVincentConfig();
     assertErc8004Config();
+    await assertVincentAuthSurface();
+
+    await assertContractBytecode({
+      label: "erc8004 identity registry",
+      address: process.env.ERC8004_IDENTITY_REGISTRY_ADDRESS as `0x${string}`,
+      rpcUrl: sepoliaRpc,
+      chain: "SEPOLIA",
+    });
+    await assertContractBytecode({
+      label: "erc8004 reputation registry",
+      address: process.env.ERC8004_REPUTATION_REGISTRY_ADDRESS as `0x${string}`,
+      rpcUrl: sepoliaRpc,
+      chain: "SEPOLIA",
+    });
+    await assertContractBytecode({
+      label: "erc8004 validation registry",
+      address: process.env.ERC8004_VALIDATION_REGISTRY_ADDRESS as `0x${string}`,
+      rpcUrl: sepoliaRpc,
+      chain: "SEPOLIA",
+    });
 
     const flowOperator = getPrivateKeyAccount(
       "FLOW_TESTNET_PRIVATE_KEY",
@@ -240,6 +352,70 @@ async function main() {
     }
     await assertWalletLooksFunded("Calma operator", sepoliaRpc, calmaOperator.address, "SEPOLIA");
   }
+
+  const now = new Date().toISOString();
+  const healthArtifact: DeploymentArtifact = {
+    generatedAt: now,
+    contracts: {
+      access: {
+        name: "access",
+        chainId: 545,
+        network: "Flow EVM Testnet",
+        address: access as string,
+        explorerUrl:
+          resolveDeploymentContract("access")?.explorerUrl ||
+          `https://evm-testnet.flowscan.io/address/${access}`,
+        deploymentTxHash: resolveDeploymentContract("access")?.deploymentTxHash,
+        lastVerifiedAt: now,
+      },
+      vault: {
+        name: "vault",
+        chainId: 545,
+        network: "Flow EVM Testnet",
+        address: vault as string,
+        explorerUrl:
+          resolveDeploymentContract("vault")?.explorerUrl ||
+          `https://evm-testnet.flowscan.io/address/${vault}`,
+        deploymentTxHash: resolveDeploymentContract("vault")?.deploymentTxHash,
+        lastVerifiedAt: now,
+      },
+      scheduler: {
+        name: "scheduler",
+        chainId: 545,
+        network: "Flow EVM Testnet",
+        address: scheduler as string,
+        explorerUrl:
+          resolveDeploymentContract("scheduler")?.explorerUrl ||
+          `https://evm-testnet.flowscan.io/address/${scheduler}`,
+        deploymentTxHash: resolveDeploymentContract("scheduler")?.deploymentTxHash,
+        lastVerifiedAt: now,
+      },
+      passport: {
+        name: "passport",
+        chainId: 545,
+        network: "Flow EVM Testnet",
+        address: passport as string,
+        explorerUrl:
+          resolveDeploymentContract("passport")?.explorerUrl ||
+          `https://evm-testnet.flowscan.io/address/${passport}`,
+        deploymentTxHash: resolveDeploymentContract("passport")?.deploymentTxHash,
+        lastVerifiedAt: now,
+      },
+      policy: {
+        name: "policy",
+        chainId: 11155111,
+        network: "Ethereum Sepolia",
+        address: policy as string,
+        explorerUrl:
+          resolveDeploymentContract("policy")?.explorerUrl ||
+          `https://sepolia.etherscan.io/address/${policy}`,
+        deploymentTxHash: resolveDeploymentContract("policy")?.deploymentTxHash,
+        lastVerifiedAt: now,
+      },
+    },
+  };
+  writeDeploymentHealthArtifact(healthArtifact);
+  console.log("  Deployment health artifact updated");
 
   console.log("Preflight passed.");
 }

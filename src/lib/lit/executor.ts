@@ -6,6 +6,7 @@ import { SAFE_EXECUTOR_CID } from "@/lib/constants";
 import { executeChipotleAction, getChipotleBaseUrl, isChipotleConfigured } from "@/lib/lit/chipotle";
 import { getFamilyById } from "@/lib/onboarding/familyService";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
+import { assertLiveDependency } from "@/lib/runtime/liveMode";
 import type { ActionType, ExecutionMode, PolicyDecision, UserSession } from "@/lib/types";
 
 export interface ExecutorParams {
@@ -233,6 +234,12 @@ export async function executeSafeSigning(
       };
     }
   }
+
+  assertLiveDependency(
+    false,
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Lit Chipotle signing could not complete with a live usage key",
+  );
 
   const fallback = simulateSafeExecutor({
     action: params.action,

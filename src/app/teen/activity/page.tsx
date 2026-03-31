@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, History, ExternalLink, Shield, Zap, Receipt, Lock } from "lucide-react";
 
+import { fetchApi, hasRenderableLink } from "@/lib/api/client";
 import { useAuthStore } from "@/store/authStore";
 import type { StoredReceipt } from "@/lib/receipts/receiptStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,16 +24,70 @@ export default function ActivityPage() {
   const [receipts, setReceipts] = useState<StoredReceipt[]>([]);
   const [selected, setSelected] = useState<StoredReceipt | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!family?.familyId) return;
-    fetch(`/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setReceipts(data.receipts);
-      })
-      .finally(() => setIsLoading(false));
+    if (!family?.familyId) {
+      setReceipts([]);
+      setSelected(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const data = await fetchApi<{ success: true; receipts: StoredReceipt[] }>(
+          `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`,
+          undefined,
+          "Failed to load activity",
+        );
+
+        if (!cancelled) {
+          setReceipts(data.receipts ?? []);
+        }
+      } catch (loadError: unknown) {
+        if (!cancelled) {
+          setReceipts([]);
+          setSelected(null);
+          setError(loadError instanceof Error ? loadError.message : "Failed to load activity");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [family?.familyId]);
+
+  if (!family?.familyId) {
+    return (
+      <div className="max-w-md mx-auto p-6">
+        <Card className="bg-card/90 border-border/30">
+          <CardContent className="py-12 text-center">
+            <div className="rounded-full bg-primary/10 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <History className="h-8 w-8 text-primary/60" />
+            </div>
+            <p className="font-medium text-foreground">Complete onboarding to view activity</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Your verified receipts and execution proof will appear here once your family is linked.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -104,7 +159,7 @@ export default function ActivityPage() {
                 Verification
               </h3>
 
-              {selected.flowTxHash && (
+              {hasRenderableLink(selected.flowTxHash, selected.flowExplorerUrl) && (
                 <a
                   href={selected.flowExplorerUrl}
                   target="_blank"
@@ -123,7 +178,7 @@ export default function ActivityPage() {
                 </a>
               )}
 
-              {selected.storachaCid && (
+              {hasRenderableLink(selected.storachaCid, selected.storachaUrl) && (
                 <a
                   href={selected.storachaUrl}
                   target="_blank"
@@ -188,6 +243,14 @@ export default function ActivityPage() {
         <h2 className="text-xl font-bold">Activity & Execution Proof</h2>
       </div>
 
+      {error ? (
+        <Card className="border-rose-500/30 bg-rose-950/30">
+          <CardContent className="py-4 text-sm text-rose-300">
+            {error}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {receipts.length === 0 ? (
         <Card className="bg-card/90 border-border/30">
           <CardContent className="py-12 text-center">
@@ -219,12 +282,12 @@ export default function ActivityPage() {
                 <span>{new Date(r.timestamp).toLocaleDateString()}</span>
               </div>
               <div className="flex gap-3 text-xs">
-                {r.flowTxHash && (
+                {hasRenderableLink(r.flowTxHash, r.flowExplorerUrl) && (
                   <span className="text-blue-400 flex items-center gap-1">
                     <ExternalLink className="h-3 w-3" /> Flow
                   </span>
                 )}
-                {r.storachaCid && (
+                {hasRenderableLink(r.storachaCid, r.storachaUrl) && (
                   <span className="text-violet-400 flex items-center gap-1">
                     <Receipt className="h-3 w-3" /> Evidence
                   </span>

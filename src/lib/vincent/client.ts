@@ -1,6 +1,6 @@
 import "server-only";
 
-import { assertLiveMode, isLiveMode } from "@/lib/runtime/liveMode";
+import { assertLiveDependency, assertLiveMode, isLiveMode } from "@/lib/runtime/liveMode";
 
 /**
  * Vincent API Client
@@ -11,7 +11,7 @@ import { assertLiveMode, isLiveMode } from "@/lib/runtime/liveMode";
  *
  * @see https://heyvincent.ai/docs
  */
-const VINCENT_API_BASE = "https://api.heyvincent.ai/v1";
+const VINCENT_API_BASE = "https://api.heyvincent.ai";
 
 interface VincentResponse<T> {
   success: boolean;
@@ -26,9 +26,32 @@ export interface VincentEvaluationResult {
   guardrails_applied: string[];
 }
 
-export interface VincentWalletInfo {
-  address: string;
-  balances: Array<{ chain: string; token: string; balance: string }>;
+export interface VincentAgentAccount {
+  agentAddress: string;
+  error?: string | null;
+}
+
+export interface VincentAgentFunds {
+  agentAddress: string;
+  tokens: Array<{
+    address: string;
+    network: string;
+    tokenAddress: string;
+    tokenBalance: string;
+    tokenMetadata?: {
+      decimals?: number;
+      logo?: string | null;
+      name?: string;
+      symbol?: string;
+    };
+    tokenPrices?: Array<{
+      currency: string;
+      value: string;
+      lastUpdatedAt?: string;
+    }>;
+  }>;
+  pageKey?: string;
+  error?: string | null;
 }
 
 export interface VincentJwtVerification {
@@ -46,6 +69,10 @@ function getVincentApiKey(): string | null {
   return process.env.VINCENT_API_KEY || null;
 }
 
+function getVincentAppId(): string | null {
+  return process.env.VINCENT_APP_ID || null;
+}
+
 export function getVincentConfig() {
   return {
     apiKey: getVincentApiKey(),
@@ -58,7 +85,7 @@ export function getVincentConfig() {
   };
 }
 
-function isVincentConfigured(): boolean {
+export function isVincentConfigured(): boolean {
   return Boolean(getVincentApiKey());
 }
 
@@ -74,6 +101,23 @@ export function isVincentLiveReady(): boolean {
   );
 }
 
+function requireVincentRequestParams(params: {
+  appId?: string;
+  userControllerAddress?: string;
+}) {
+  const appId = params.appId || getVincentAppId();
+  if (!appId) {
+    throw new Error("VINCENT_APP_ID not configured");
+  }
+
+  const userControllerAddress = params.userControllerAddress;
+  if (!userControllerAddress) {
+    throw new Error("VINCENT_USER_CONTROLLER_ADDRESS is required");
+  }
+
+  return { appId, userControllerAddress };
+}
+
 export function assertVincentLiveReady(context = "VINCENT_UNAVAILABLE"): void {
   assertLiveMode(
     isVincentLiveReady(),
@@ -81,10 +125,7 @@ export function assertVincentLiveReady(context = "VINCENT_UNAVAILABLE"): void {
   );
 }
 
-async function vincentFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<VincentResponse<T>> {
+async function vincentFetch<T>(endpoint: string, options: RequestInit = {}): Promise<VincentResponse<T>> {
   const apiKey = getVincentApiKey();
   assertVincentLiveReady("VINCENT_UNAVAILABLE");
   if (!apiKey) {
@@ -166,14 +207,88 @@ export async function evaluateWithVincentAPI(params: {
 /**
  * Get Calma's agent wallet info from Vincent
  */
-export async function getAgentWallet(): Promise<
-  VincentResponse<VincentWalletInfo>
-> {
+export async function getAgentAccount(params: {
+  userControllerAddress: string;
+  appId?: string;
+}): Promise<VincentResponse<VincentAgentAccount>> {
   if (!isVincentConfigured()) {
+    assertLiveDependency(
+      false,
+      "LIVE_DEPENDENCY_UNAVAILABLE",
+      "Vincent wallet lookup requires a live Vincent configuration",
+    );
     return { success: false, error: "Vincent API not configured" };
   }
 
-  return vincentFetch<VincentWalletInfo>("/wallet/info");
+  const { appId, userControllerAddress } = requireVincentRequestParams(params);
+  return vincentFetch<VincentAgentAccount>(`/user/${appId}/agent-account`, {
+    method: "POST",
+    body: JSON.stringify({
+      userControllerAddress,
+    }),
+  });
+}
+
+export async function getAgentFunds(params: {
+  userControllerAddress: string;
+  appId?: string;
+  networks?: string[];
+}): Promise<VincentResponse<VincentAgentFunds>> {
+  if (!isVincentConfigured()) {
+    assertLiveDependency(
+      false,
+      "LIVE_DEPENDENCY_UNAVAILABLE",
+      "Vincent wallet lookup requires a live Vincent configuration",
+    );
+    return { success: false, error: "Vincent API not configured" };
+  }
+
+  const { appId, userControllerAddress } = requireVincentRequestParams(params);
+  return vincentFetch<VincentAgentFunds>(`/user/${appId}/agent-funds`, {
+    method: "POST",
+    body: JSON.stringify({
+      userControllerAddress,
+      networks: params.networks || ["sepolia"],
+    }),
+  });
+}
+
+export async function getAgentWallet(params: {
+  userControllerAddress: string;
+  appId?: string;
+  networks?: string[];
+}): Promise<VincentResponse<{ address: string; balances: Array<{ chain: string; token: string; balance: string }>; }>> {
+  const account = await getAgentAccount({
+    userControllerAddress: params.userControllerAddress,
+    appId: params.appId,
+  });
+
+  const funds = account.success
+    ? await getAgentFunds({
+        userControllerAddress: params.userControllerAddress,
+        appId: params.appId,
+        networks: params.networks,
+      })
+    : null;
+
+  if (!account.success) {
+    return { success: false, error: account.error || "Vincent agent account lookup failed" };
+  }
+
+  return {
+    success: true,
+    data: {
+      address: account.data?.agentAddress || "",
+      balances:
+        funds?.success && funds.data?.tokens
+          ? funds.data.tokens.map((token) => ({
+              chain: token.network,
+              token: token.tokenMetadata?.symbol || token.tokenAddress,
+              balance: token.tokenBalance,
+            }))
+          : [],
+    },
+  };
 }
 
 /**
@@ -258,8 +373,3 @@ export async function verifyVincentJwt(jwt: string): Promise<VincentJwtVerificat
     rawClaims: claims,
   };
 }
-
-/**
- * Check if Vincent API is available and configured
- */
-export { isVincentConfigured };

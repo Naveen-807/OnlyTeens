@@ -1,4 +1,5 @@
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { resolveDeploymentContract } from "@/lib/runtime/deploymentArtifacts";
 import { isStrictRuntimeMode } from "@/lib/runtime/demoMode";
 import { isLiveMode } from "@/lib/runtime/liveMode";
 import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
@@ -68,6 +69,28 @@ export function assertContractConfigForDemo(): void {
 
   if (!SAFE_EXECUTOR_CID) {
     throw new Error("MISSING_CONFIG:SAFE_EXECUTOR_CID is not configured");
+  }
+
+  if (isLiveMode()) {
+    const canonicalContracts = {
+      access: resolveDeploymentContract("access")?.address,
+      vault: resolveDeploymentContract("vault")?.address,
+      scheduler: resolveDeploymentContract("scheduler")?.address,
+      passport: resolveDeploymentContract("passport")?.address,
+      policy: resolveDeploymentContract("policy")?.address,
+    } as const;
+
+    for (const [name, address] of Object.entries(canonicalContracts)) {
+      if (!address) {
+        throw new Error(`DEPLOYMENT_MISMATCH:Missing canonical deployment record for ${name}`);
+      }
+      const runtimeAddress = CONTRACTS[name as keyof typeof canonicalContracts];
+      if (runtimeAddress.toLowerCase() !== address.toLowerCase()) {
+        throw new Error(
+          `DEPLOYMENT_MISMATCH:${name} runtime address ${runtimeAddress} does not match canonical deployment ${address}`,
+        );
+      }
+    }
   }
 
   if (isLiveMode()) {

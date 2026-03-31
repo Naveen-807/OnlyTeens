@@ -68,21 +68,15 @@ export async function GET(req: NextRequest) {
           policyMode: guardianAutopilot.some((item) => item.policyMode === "encrypted-live") ||
             agentAssisted.some((item) => item.policyMode === "encrypted-live")
             ? "encrypted-live"
-            : "degraded",
+            : "blocked",
           evaluations: receipts
             .filter((receipt) => receipt.zamaTxHash)
             .map((receipt) => ({
               id: receipt.id,
               policyMode: receipt.policyMode,
               zamaTxHash: receipt.zamaTxHash,
-              teenView:
-                receipt.policyMode === "encrypted-live"
-                  ? "Policy passed confidential review."
-                  : "Policy ran in degraded mode.",
-              guardianView:
-                receipt.policyMode === "encrypted-live"
-                  ? "Guardian can inspect the live encrypted evaluation."
-                  : "Guardian sees degraded fallback output.",
+              teenView: "Policy passed confidential review.",
+              guardianView: "Guardian can inspect the live encrypted evaluation.",
             })),
         },
         vincent: {

@@ -78,7 +78,7 @@ export async function executeDirectSavingsFlow(params: {
   const lane = buildLaneMetadata({
     session: params.session,
     executionLane: "direct-flow",
-    policyMode: "degraded",
+    policyMode: "not-applicable",
   });
 
   const passportBefore = await getPassport(params.familyId, params.teenAddress);
@@ -205,7 +205,7 @@ export async function executeDirectPaymentFlow(params: {
   const lane = buildLaneMetadata({
     session: params.session,
     executionLane: "direct-flow",
-    policyMode: "degraded",
+    policyMode: "not-applicable",
   });
   const passportBefore = await getPassport(params.familyId, params.teenAddress);
   const txHash = await flowWalletClient.sendTransaction({
@@ -299,7 +299,7 @@ export async function executeDirectSubscriptionFlow(params: {
   const lane = buildLaneMetadata({
     session: params.session,
     executionLane: "direct-flow",
-    policyMode: "degraded",
+    policyMode: "not-applicable",
   });
 
   const passportBefore = await getPassport(params.familyId, params.teenAddress);

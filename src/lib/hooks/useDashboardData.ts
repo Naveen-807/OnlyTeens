@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { fetchApi } from "@/lib/api/client";
 import { useAuthStore } from "@/store/authStore";
 import type { TeenBalances, PassportState, ApprovalRequest } from "@/lib/types";
 import type { StoredReceipt } from "@/lib/receipts/receiptStore";
+
+interface ReceiptsListResponse {
+  success: true;
+  receipts: StoredReceipt[];
+  items?: StoredReceipt[];
+  count: number;
+}
 
 interface DashboardData {
   balances: TeenBalances | null;
@@ -32,20 +40,21 @@ export function useDashboardData(): DashboardData {
 
     try {
       // Refresh auth store (balances, passport, approvals)
-      await useAuthStore.getState().refreshState();
+      const refreshResult = await useAuthStore.getState().refreshState();
 
       // Fetch receipts from durable store
-      const res = await fetch(
-        `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`
+      const data = await fetchApi<ReceiptsListResponse>(
+        `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`,
+        undefined,
+        "Failed to load receipts",
       );
-      const data = await res.json();
-      if (data.success) {
-        setReceipts(data.receipts);
-      } else {
-        setError(data.error || "Failed to load receipts");
+      setReceipts(data.receipts ?? data.items ?? []);
+
+      if (!refreshResult.success) {
+        setError(refreshResult.error || "Failed to refresh dashboard state");
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to load dashboard data");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard data");
     } finally {
       setIsLoading(false);
     }

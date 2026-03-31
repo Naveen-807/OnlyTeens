@@ -72,6 +72,7 @@ export async function requestSubscription(params: {
       passportLevel: passportState.level,
       isRecurring: true,
       account: clawrenceAccount,
+      requireEncrypted: true,
     });
 
     const decision = policyResult.decision;
@@ -189,8 +190,6 @@ export async function requestSubscription(params: {
       success: false,
       decision: "BLOCKED",
       requiresApproval: false,
-      executionMode: "local-fallback",
-      fallbackActive: true,
       error: error?.message,
     };
   }
@@ -220,7 +219,7 @@ export async function executeApprovedSubscription(params: {
       session: params.session,
       executionLane: "agent-assisted-flow",
       approvalMode: params.guardianApproved ? "guardian-approved" : "guardian-approval-required",
-      policyMode: params.zamaTxHash ? "encrypted-live" : "degraded",
+      policyMode: "encrypted-live",
     });
     const { session: clawrenceSession, account: clawrenceAccount } =
       await getClawrenceAccount(params.familyId, params.teenAddress);
@@ -284,7 +283,7 @@ export async function executeApprovedSubscription(params: {
           decision: params.decision as any,
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: params.zamaTxHash || "",
-          source: params.zamaTxHash ? "encrypted" : "heuristic",
+          source: "encrypted",
         },
         lit: {
           signed: false,
@@ -489,7 +488,7 @@ export async function executeApprovedSubscription(params: {
           decision: params.decision as any,
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: params.zamaTxHash || "",
-          source: params.zamaTxHash ? "encrypted" : "heuristic",
+          source: "encrypted",
         },
       storacha: {
         receiptCid: storachaReceipt.cid,
@@ -524,8 +523,6 @@ export async function executeApprovedSubscription(params: {
       success: false,
       decision: params.decision as any,
       requiresApproval: false,
-      executionMode: "local-fallback",
-      fallbackActive: true,
       error: error?.message,
     };
   }

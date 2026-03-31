@@ -71,6 +71,7 @@ export async function executeSavingsFlow(params: {
       passportLevel: passportBefore.level,
       isRecurring: params.isRecurring,
       account: clawrenceAccount,
+      requireEncrypted: true,
     });
 
     const decision = policyResult.decision;
@@ -140,14 +141,8 @@ export async function executeSavingsFlow(params: {
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: policyResult.txHash || "",
           source: policyResult.source,
-          guardianView:
-            policyResult.source === "encrypted"
-              ? "Guardian can inspect the encrypted decision on Sepolia."
-              : "Guardian is viewing a degraded policy fallback.",
-          teenView:
-            policyResult.source === "encrypted"
-              ? "Policy passed confidential review."
-              : "Policy review used degraded mode.",
+          guardianView: "Guardian can inspect the encrypted decision on Sepolia.",
+          teenView: "Policy passed confidential review.",
         },
         guardrail: {
           decision: "ALLOW",
@@ -349,14 +344,8 @@ export async function executeSavingsFlow(params: {
           contractAddress: CONTRACTS.policy,
           evaluationTxHash: policyResult.txHash || "",
           source: policyResult.source,
-          guardianView:
-            policyResult.source === "encrypted"
-              ? "Guardian can inspect the encrypted decision on Sepolia."
-              : "Guardian is viewing a degraded policy fallback.",
-          teenView:
-            policyResult.source === "encrypted"
-              ? "Policy passed confidential review."
-              : "Policy review used degraded mode.",
+          guardianView: "Guardian can inspect the encrypted decision on Sepolia.",
+          teenView: "Policy passed confidential review.",
         },
       storacha: {
         receiptCid: storachaReceipt.cid,
@@ -381,8 +370,6 @@ export async function executeSavingsFlow(params: {
       success: false,
       decision: "BLOCKED",
       requiresApproval: false,
-      executionMode: "local-fallback",
-      fallbackActive: true,
       error: error?.message || "Unknown error in savings flow",
     };
   }

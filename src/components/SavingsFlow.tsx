@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PiggyBank, CheckCircle2, Clock, XCircle, ExternalLink, Receipt } from "lucide-react";
 
+import { fetchApi, hasRenderableLink } from "@/lib/api/client";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,32 +51,42 @@ export function SavingsFlow({
   const [interval, setInterval] = useState<"weekly" | "monthly">("weekly");
   const [result, setResult] = useState<FlowResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const run = async () => {
     setLoading(true);
     setResult(null);
+    setSubmitError(null);
     try {
-      const res = await fetch("/api/savings/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session,
-          familyId,
-          teenAddress,
-          guardianAddress,
-          teenName,
-          amount,
-          isRecurring,
-          interval,
-          clawrencePublicKey,
-          clawrencePkpTokenId,
-        }),
-      });
-      const data = (await res.json()) as FlowResult;
+      const data = await fetchApi<FlowResult>(
+        "/api/savings/execute",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session,
+            familyId,
+            teenAddress,
+            guardianAddress,
+            teenName,
+            amount,
+            isRecurring,
+            interval,
+            clawrencePublicKey,
+            clawrencePkpTokenId,
+          }),
+        },
+        "Savings request failed",
+      );
       setResult(data);
       if (data.success) {
-        await useAuthStore.getState().refreshState();
+        const refreshResult = await useAuthStore.getState().refreshState();
+        if (!refreshResult.success) {
+          setSubmitError(refreshResult.error || "Saved, but the dashboard could not refresh.");
+        }
       }
+    } catch (error: unknown) {
+      setSubmitError(error instanceof Error ? error.message : "Savings request failed");
     } finally {
       setLoading(false);
     }
@@ -187,6 +198,14 @@ export function SavingsFlow({
         </CardContent>
       </Card>
 
+      {submitError ? (
+        <Card className="border-rose-500/30 bg-rose-950/30">
+          <CardContent className="p-4">
+            <p className="text-sm text-rose-300">{submitError}</p>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Result Card */}
       {result && (
         <Card className={cn(
@@ -277,9 +296,9 @@ export function SavingsFlow({
             )}
 
             <div className="flex flex-wrap gap-2">
-              {result.flow?.txHash && (
+              {hasRenderableLink(result.flow?.txHash, result.flow?.explorerUrl) && (
                 <a
-                  href={result.flow.explorerUrl}
+                  href={result.flow?.explorerUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-950/40 px-3 py-2 text-xs text-blue-400 hover:bg-blue-950/60 transition-colors"
@@ -288,9 +307,9 @@ export function SavingsFlow({
                   Flow Explorer
                 </a>
               )}
-              {result.storacha?.receiptCid && (
+              {hasRenderableLink(result.storacha?.receiptCid, result.storacha?.receiptUrl) && (
                 <a
-                  href={result.storacha.receiptUrl}
+                  href={result.storacha?.receiptUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-950/40 px-3 py-2 text-xs text-violet-400 hover:bg-violet-950/60 transition-colors"

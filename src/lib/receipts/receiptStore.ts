@@ -124,15 +124,20 @@ export function updateReceiptByFlowTxHash(
 }
 
 export function normalizeStoredReceipt(receipt: StoredReceipt): StoredReceipt {
+  const inferredLane = receipt.executionLane || inferLaneFromLegacyReceipt(receipt);
   return {
     ...receipt,
-    executionLane: receipt.executionLane || inferLaneFromLegacyReceipt(receipt),
+    executionLane: inferredLane,
     transactionActor: receipt.transactionActor || inferActorFromLegacyReceipt(receipt),
     approvalMode: receipt.approvalMode || inferApprovalModeFromLegacyReceipt(receipt),
     flowMedium: receipt.flowMedium || "FLOW",
     policyMode:
       receipt.policyMode ||
-      (receipt.zamaTxHash ? "encrypted-live" : "degraded"),
+      (receipt.zamaTxHash
+        ? "encrypted-live"
+        : inferredLane === "direct-flow"
+          ? "not-applicable"
+          : "degraded"),
     guardianAutopilotEnabled: Boolean(receipt.guardianAutopilotEnabled),
   };
 }

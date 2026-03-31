@@ -19,6 +19,7 @@ import {
 } from "@/lib/onboarding/familyService";
 import { assertFamilyOnboardingConfigForDemo } from "@/lib/runtime/config";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
+import { assertLiveDependency, isLiveMode } from "@/lib/runtime/liveMode";
 import type { ExecutionMode, UserSession } from "@/lib/types";
 import type { FamilyRecord, LinkedTeenAccount } from "@/lib/types/onboarding";
 import { getAgentWallet, getVincentConfig, isVincentConfigured } from "@/lib/vincent/client";
@@ -90,7 +91,7 @@ function buildBoundSession(params: {
       usageKeyId: params.usageKeyId,
     },
     vincent: {
-      mode: params.vincentWalletAddress ? "live" : "fallback",
+      mode: params.vincentWalletAddress ? "live" : "emergency-fallback",
       walletId: params.vincentWalletId,
       walletAddress: params.vincentWalletAddress,
       agentWalletAddress: params.vincentWalletAddress,
@@ -113,9 +114,14 @@ function buildBoundSession(params: {
   };
 }
 
-async function loadVincentWallet() {
+async function loadVincentWallet(userControllerAddress: string) {
   const config = getVincentConfig();
   if (!isVincentConfigured()) {
+    assertLiveDependency(
+      false,
+      "LIVE_DEPENDENCY_UNAVAILABLE",
+      "Vincent app configuration is required for family onboarding",
+    );
     return {
       walletId: undefined,
       walletAddress: undefined,
@@ -126,7 +132,12 @@ async function loadVincentWallet() {
     };
   }
 
-  const wallet = await getAgentWallet();
+  const wallet = await getAgentWallet({ userControllerAddress, appId: config.appId });
+  assertLiveDependency(
+    Boolean(wallet.success && wallet.data?.address),
+    "LIVE_DEPENDENCY_UNAVAILABLE",
+    "Vincent live wallet is required for family onboarding",
+  );
   return {
     walletId: undefined,
     walletAddress: wallet.success ? wallet.data?.address : undefined,
@@ -135,6 +146,23 @@ async function loadVincentWallet() {
     userAccount: undefined,
     jwtAuthenticated: false,
   };
+}
+
+function assertLiveProvisionReady(params: {
+  vincentWalletAddress?: string;
+  provisionMode: "live" | "local";
+  fallbackActive: boolean;
+}) {
+  assertLiveDependency(
+    Boolean(params.vincentWalletAddress),
+    "LIVE_DEPENDENCY_UNAVAILABLE",
+    "Vincent live wallet is required before a family becomes active",
+  );
+  assertLiveDependency(
+    params.provisionMode === "live" && !params.fallbackActive,
+    "LIVE_SIGNER_UNAVAILABLE",
+    "Chipotle family provisioning must complete in live mode without fallback",
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -158,7 +186,7 @@ export async function POST(req: NextRequest) {
 
     const existing = getFamilyByGuardian(guardianSession.address);
     const litActionCid = body.litActionCid || SAFE_EXECUTOR_CID || "";
-    const vincent = await loadVincentWallet();
+    const vincent = await loadVincentWallet(guardianSession.address);
 
     if (existing) {
       const alreadyLinked =
@@ -171,6 +199,13 @@ export async function POST(req: NextRequest) {
         );
 
       if (alreadyLinked) {
+        assertLiveDependency(
+          !existing.fallbackActive &&
+            existing.executionMode === "vincent-live" &&
+            Boolean(existing.vincentWalletAddress),
+          "LIVE_DEPENDENCY_UNAVAILABLE",
+          "Existing family record is not live-ready",
+        );
         const reboundGuardian = buildBoundSession({
           session: guardianSession,
           familyId: existing.familyId,
@@ -211,6 +246,11 @@ export async function POST(req: NextRequest) {
         family: existing,
         safeExecutorCid: litActionCid,
       });
+      assertLiveProvisionReady({
+        vincentWalletAddress: vincent.walletAddress,
+        provisionMode: teenProvision.mode,
+        fallbackActive: teenProvision.fallbackActive,
+      });
 
       const linkedTeen: LinkedTeenAccount = {
         teenPhoneNumber: teenSession.phoneNumber,
@@ -242,11 +282,8 @@ export async function POST(req: NextRequest) {
       const updatedFamily: FamilyRecord = {
         ...existing,
         linkedTeens: [...(existing.linkedTeens || []), linkedTeen],
-        fallbackActive: teenProvision.fallbackActive,
-        executionMode: getExecutionMode({
-          vincentWalletAddress: vincent.walletAddress,
-          chipotleLive: teenProvision.mode === "live",
-        }),
+        fallbackActive: false,
+        executionMode: "vincent-live",
         executionLaneModes: ["direct-flow", "agent-assisted-flow", "guardian-autopilot-flow"],
         walletMode: flowRuntime.walletMode,
         gasMode: flowRuntime.gasMode,
@@ -254,13 +291,17 @@ export async function POST(req: NextRequest) {
         schedulerBackend: flowRuntime.schedulerBackend,
         flowNativeFeaturesUsed: flowRuntime.flowNativeFeaturesUsed,
         guardianAutopilotEnabled: existing.guardianAutopilotEnabled || false,
-        policyMode: existing.policyMode || "degraded",
+        policyMode: "encrypted-live",
       };
 
-      saveFamily(updatedFamily);
-
       const onchain: Record<string, any> = {};
-      if (nonZeroContractsConfigured() && process.env.DEPLOYER_PRIVATE_KEY) {
+      if (!nonZeroContractsConfigured() || !process.env.DEPLOYER_PRIVATE_KEY) {
+        if (isLiveMode() || isDemoStrictMode()) {
+          throw new Error(
+            "CONTRACT_MISCONFIGURED:Contracts/private key are not configured for live family bootstrap",
+          );
+        }
+      } else {
         try {
           onchain.teenRegistration = await addTeenOnChain({
             familyId: toAddress(updatedFamily.familyId),
@@ -271,13 +312,13 @@ export async function POST(req: NextRequest) {
             teenAddress: toAddress(linkedTeen.teenAddress),
           });
         } catch (e: any) {
-          onchain.warning = e?.message || "Onchain multi-teen bootstrap failed";
+          throw new Error(
+            `LIVE_DEPENDENCY_UNAVAILABLE:${e?.message || "Onchain multi-teen bootstrap failed"}`,
+          );
         }
-      } else if (isDemoStrictMode()) {
-        throw new Error(
-          "MISSING_CONFIG:Contracts/private key not configured for strict demo",
-        );
       }
+
+      saveFamily(updatedFamily);
 
       bindPhoneSessionToWallet({
         role: "guardian",
@@ -349,6 +390,11 @@ export async function POST(req: NextRequest) {
       teenAddress: teenSession.address,
       safeExecutorCid: litActionCid,
     });
+    assertLiveProvisionReady({
+      vincentWalletAddress: vincent.walletAddress,
+      provisionMode: provision.mode,
+      fallbackActive: provision.fallbackActive,
+    });
 
     const family: FamilyRecord = {
       familyId,
@@ -387,11 +433,8 @@ export async function POST(req: NextRequest) {
       vincentJwtAuthenticated: vincent.jwtAuthenticated,
       vincentWalletId: vincent.walletId,
       vincentWalletAddress: vincent.walletAddress,
-      executionMode: getExecutionMode({
-        vincentWalletAddress: vincent.walletAddress,
-        chipotleLive: provision.mode === "live",
-      }),
-      fallbackActive: provision.fallbackActive,
+      executionMode: "vincent-live",
+      fallbackActive: false,
       executionLaneModes: ["direct-flow", "agent-assisted-flow", "guardian-autopilot-flow"],
       walletMode: flowRuntime.walletMode,
       gasMode: flowRuntime.gasMode,
@@ -399,16 +442,21 @@ export async function POST(req: NextRequest) {
       schedulerBackend: flowRuntime.schedulerBackend,
       flowNativeFeaturesUsed: flowRuntime.flowNativeFeaturesUsed,
       guardianAutopilotEnabled: false,
-      policyMode: "degraded",
+      policyMode: "encrypted-live",
       linkedTeens: [],
       createdAt: new Date().toISOString(),
       active: true,
     };
 
-    saveFamily(family);
-
     const onchain: Record<string, any> = {};
-    if (nonZeroContractsConfigured() && process.env.DEPLOYER_PRIVATE_KEY) {
+    if (!nonZeroContractsConfigured() || !process.env.DEPLOYER_PRIVATE_KEY) {
+      if (isLiveMode() || isDemoStrictMode()) {
+        throw new Error(
+          "CONTRACT_MISCONFIGURED:Contracts/private key are not configured for live family bootstrap",
+        );
+      }
+      onchain.warning = "Contracts/private key not configured; family saved locally only";
+    } else {
       try {
         onchain.familyRegistration = await registerFamilyOnChain({
           familyId: toAddress(family.familyId),
@@ -421,16 +469,13 @@ export async function POST(req: NextRequest) {
           teenAddress: toAddress(family.teenAddress),
         });
       } catch (e: any) {
-        onchain.warning = e?.message || "Onchain bootstrap failed";
-      }
-    } else {
-      if (isDemoStrictMode()) {
         throw new Error(
-          "MISSING_CONFIG:Contracts/private key not configured for strict demo",
+          `LIVE_DEPENDENCY_UNAVAILABLE:${e?.message || "Onchain bootstrap failed"}`,
         );
       }
-      onchain.warning = "Contracts/private key not configured; family saved locally only";
     }
+
+    saveFamily(family);
 
     bindPhoneSessionToWallet({
       role: "guardian",

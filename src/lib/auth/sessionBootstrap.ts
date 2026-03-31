@@ -14,10 +14,11 @@ import type {
   ApprovalRequest,
   AuthChannel,
 } from "@/lib/types";
+import type { FamilyRecord } from "@/lib/types/onboarding";
 
 export interface BootstrapResult {
   session: UserSession;
-  family: any | null;
+  family: FamilyRecord | null;
   balances: TeenBalances | null;
   passport: PassportState | null;
   pendingApprovals: ApprovalRequest[];
@@ -30,7 +31,7 @@ export async function bootstrapSession(params: {
   pkpPublicKey: string;
   pkpTokenId: string;
   pkpAddress?: string;
-  authMethod?: any;
+  authMethod?: UserSession["authMethod"];
   address: string;
   authChannel?: AuthChannel;
   phoneNumber?: string;
@@ -53,7 +54,7 @@ export async function bootstrapSession(params: {
           ) || null
       : null;
 
-  const family = familyRecord
+  const family: FamilyRecord | null = familyRecord
     ? {
         ...familyRecord,
         teenAddress: selectedTeen?.teenAddress || familyRecord.teenAddress,
@@ -127,19 +128,19 @@ export async function bootstrapSession(params: {
       usageKeyId: family?.chipotleUsageKeyId,
     },
     vincent: {
-      mode: family?.vincentWalletAddress ? "live" : "fallback",
+      mode: family?.vincentWalletAddress ? "live" : "emergency-fallback",
       walletId: family?.vincentWalletId,
       walletAddress: family?.vincentWalletAddress,
       appId: family?.vincentAppId,
       appVersion: family?.vincentAppVersion,
       userAccount: family?.vincentUserAccount,
-        jwtAuthenticated: family?.vincentJwtAuthenticated,
+      jwtAuthenticated: family?.vincentJwtAuthenticated,
     },
   };
 
   if (family) {
     session.vincent = {
-      mode: session.vincent?.mode || "fallback",
+      mode: session.vincent?.mode || "emergency-fallback",
       ...session.vincent,
       agentWalletAddress: family.vincentWalletAddress,
     };

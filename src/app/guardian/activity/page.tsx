@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import { fetchApi } from "@/lib/api/client";
 import { ActivityFeed, type ActivityItem } from "@/components/ActivityFeed";
 import { useAuthStore } from "@/store/authStore";
+import type { StoredReceipt } from "@/lib/receipts/receiptStore";
 
 export default function GuardianActivityPage() {
   const { family } = useAuthStore();
@@ -12,35 +14,58 @@ export default function GuardianActivityPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const run = async () => {
-      if (!family?.familyId) return;
-      setIsLoading(true);
-      setError(null);
-      const res = await fetch(
-        `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`
-      );
-      const data = await res.json();
-      if (!data.success) {
-        setError(data.error || "Failed to load activity");
+      if (!family?.familyId) {
+        setItems([]);
+        setError(null);
         setIsLoading(false);
         return;
       }
 
-      const mapped: ActivityItem[] = (data.receipts || []).map((r: any) => ({
-        id: r.id,
-        type: r.type as any,
-        description: r.description,
-        amount: r.amount,
-        decision: r.decision as any,
-        flowTxHash: r.flowTxHash,
-        storachaCid: r.storachaCid,
-        passportLevel: r.passportLevel,
-        timestamp: r.timestamp,
-      }));
-      setItems(mapped);
-      setIsLoading(false);
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const data = await fetchApi<{ success: true; receipts: StoredReceipt[] }>(
+          `/api/receipts/list?familyId=${encodeURIComponent(family.familyId)}`,
+          undefined,
+          "Failed to load activity",
+        );
+
+        const mapped: ActivityItem[] = (data.receipts || []).map((receipt) => ({
+          id: receipt.id,
+          type: receipt.type as ActivityItem["type"],
+          description: receipt.description,
+          amount: receipt.amount,
+          decision: receipt.decision as ActivityItem["decision"],
+          flowTxHash: receipt.flowTxHash,
+          storachaCid: receipt.storachaCid,
+          passportLevel: receipt.passportLevel,
+          timestamp: receipt.timestamp,
+        }));
+
+        if (!cancelled) {
+          setItems(mapped);
+        }
+      } catch (loadError: unknown) {
+        if (!cancelled) {
+          setItems([]);
+          setError(loadError instanceof Error ? loadError.message : "Failed to load activity");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
     };
+
     void run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [family?.familyId]);
 
   if (!family?.familyId) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle, RefreshCw, XCircle } from "lucide-react";
 
+import { fetchApi } from "@/lib/api/client";
 import type { ApprovalRequest } from "@/lib/types";
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,12 @@ export default function GuardianInbox() {
 
   const familyId = family?.familyId;
 
+  interface ApprovalListResponse {
+    success: true;
+    requests?: ApprovalRequest[];
+    approvals?: ApprovalRequest[];
+  }
+
   const fetchRequests = useCallback(async () => {
     if (!familyId) {
       setRequests([]);
@@ -36,19 +43,13 @@ export default function GuardianInbox() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `/api/approval/list?familyId=${encodeURIComponent(familyId)}`
+      const data = await fetchApi<ApprovalListResponse>(
+        `/api/approval/list?familyId=${encodeURIComponent(familyId)}`,
+        undefined,
+        "Failed to load approval requests",
       );
-      const data = await res.json();
-      if (data.success) {
-        setRequests(data.requests ?? data.approvals ?? []);
-        setStatus({ kind: "idle" });
-      } else {
-        setStatus({
-          kind: "error",
-          message: data.error || "Failed to load approval requests",
-        });
-      }
+      setRequests(data.requests ?? data.approvals ?? []);
+      setStatus({ kind: "idle" });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load approval requests";
       setStatus({
@@ -76,15 +77,15 @@ export default function GuardianInbox() {
     setStatus({ kind: "idle" });
     try {
       const guardianNote = notes[requestId]?.trim() || "Approved";
-      const res = await fetch("/api/approval/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, guardianNote, session }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || "Approval failed");
-      }
+      await fetchApi<{ success: true }>(
+        "/api/approval/approve",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId, guardianNote, session }),
+        },
+        "Approval failed",
+      );
 
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       setStatus({
@@ -115,15 +116,15 @@ export default function GuardianInbox() {
     setProcessing(requestId);
     setStatus({ kind: "idle" });
     try {
-      const res = await fetch("/api/approval/reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, guardianNote, session }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || "Rejection failed");
-      }
+      await fetchApi<{ success: true }>(
+        "/api/approval/reject",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId, guardianNote, session }),
+        },
+        "Rejection failed",
+      );
 
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
       setStatus({

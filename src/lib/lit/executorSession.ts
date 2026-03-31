@@ -66,7 +66,7 @@ export async function getClawrenceSession(
       usageKeyId: chipotleUsageKeyId,
     },
     vincent: {
-      mode: vincentWalletAddress ? "live" : "fallback",
+      mode: vincentWalletAddress ? "live" : "emergency-fallback",
       walletId: vincentWalletId,
       walletAddress: vincentWalletAddress,
       appId: family.vincentAppId,

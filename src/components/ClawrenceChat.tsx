@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
-import { Bot, Send, Sparkles, AlertCircle } from "lucide-react";
+import { Bot, Send, Sparkles } from "lucide-react";
 
 import type { ClawrenceIntent, UserSession } from "@/lib/types";
+import { fetchApi, fetchJson, extractApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -16,6 +18,13 @@ interface Message {
   timestamp: string;
   intent?: ClawrenceIntent;
   actionPreview?: boolean;
+}
+
+interface ChatResponse {
+  type: "answer" | "action_preview" | "unknown" | "error";
+  explanation?: string;
+  error?: string;
+  intent?: ClawrenceIntent;
 }
 
 export function ClawrenceChat({
@@ -77,32 +86,39 @@ export function ClawrenceChat({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          familyId,
-          teenAddress,
-          teenName,
-          session,
-        }),
-      });
+      const data = await fetchJson<ChatResponse>(
+        "/api/chat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: text,
+            familyId,
+            teenAddress,
+            teenName,
+            session,
+          }),
+        },
+        "Calma could not respond",
+      );
 
-      const data = await res.json();
+      if (data.type === "error") {
+        throw new Error(data.error || "Calma could not respond");
+      }
+
       push({
         id: `msg_${Date.now()}_cl`,
         role: "clawrence",
-        content: data.explanation,
+        content: data.explanation || "I need another try to answer that clearly.",
         timestamp: new Date().toISOString(),
         intent: data.intent,
         actionPreview: data.type === "action_preview",
       });
-    } catch (err) {
+    } catch (err: unknown) {
       push({
         id: `err_${Date.now()}`,
         role: "system",
-        content: "Something went wrong. Please try again.",
+        content: err instanceof Error ? err.message : "Something went wrong. Please try again.",
         timestamp: new Date().toISOString(),
       });
     } finally {
@@ -118,45 +134,63 @@ export function ClawrenceChat({
     setLoading(true);
     try {
       if (intent.type === "savings") {
-        const res = await fetch("/api/savings/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session,
-            familyId,
-            teenAddress,
-            guardianAddress,
-            teenName,
-            amount: String(intent.amount || 0),
-            isRecurring: Boolean(intent.isRecurring),
-            interval: intent.interval || "weekly",
-            clawrencePublicKey,
-            clawrencePkpTokenId,
-          }),
-        });
-        const data = await res.json();
+        const data = await fetchApi<{
+          success: boolean;
+          error?: string;
+          calma?: { celebration?: string; postExplanation?: string };
+          clawrence?: { celebration?: string; postExplanation?: string };
+        }>(
+          "/api/savings/execute",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session,
+              familyId,
+              teenAddress,
+              guardianAddress,
+              teenName,
+              amount: String(intent.amount || 0),
+              isRecurring: Boolean(intent.isRecurring),
+              interval: intent.interval || "weekly",
+              clawrencePublicKey,
+              clawrencePkpTokenId,
+            }),
+          },
+          "Savings action failed",
+        );
         push({
           id: `result_${Date.now()}`,
           role: "clawrence",
           content: data?.calma?.celebration || data?.calma?.postExplanation || data?.clawrence?.celebration || data?.clawrence?.postExplanation || "Done.",
           timestamp: new Date().toISOString(),
         });
+        await useAuthStore.getState().refreshState();
       } else {
-        const res = await fetch("/api/subscription/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            session,
-            familyId,
-            teenAddress,
-            guardianAddress,
-            teenName,
-            serviceName: intent.serviceName || intent.description,
-            monthlyAmount: String(intent.amount || 0),
-            clawrencePublicKey,
-          }),
-        });
-        const data = await res.json();
+        const data = await fetchApi<{
+          success: boolean;
+          error?: string;
+          requiresApproval?: boolean;
+          calma?: { celebration?: string };
+          clawrence?: { celebration?: string };
+        }>(
+          "/api/subscription/request",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session,
+              familyId,
+              teenAddress,
+              guardianAddress,
+              teenName,
+              serviceName: intent.serviceName || intent.description,
+              monthlyAmount: String(intent.amount || 0),
+              clawrencePublicKey,
+            }),
+          },
+          "Subscription request failed",
+        );
         push({
           id: `result_${Date.now()}`,
           role: "clawrence",
@@ -166,7 +200,15 @@ export function ClawrenceChat({
               : data?.calma?.celebration || data?.clawrence?.celebration || "Submitted.",
           timestamp: new Date().toISOString(),
         });
+        await useAuthStore.getState().refreshState();
       }
+    } catch (error: unknown) {
+      push({
+        id: `result_err_${Date.now()}`,
+        role: "system",
+        content: extractApiError(error, "Action failed"),
+        timestamp: new Date().toISOString(),
+      });
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ import { getFlowRuntimeProfile } from "@/lib/flow/runtimeProfile";
 import { getChipotleBaseUrl, isChipotleConfigured } from "@/lib/lit/chipotle";
 import { getPermissions } from "@/lib/lit/permissions";
 import { loadFamilies } from "@/lib/onboarding/familyService";
-import { isDegradedModeAllowed, isLiveMode } from "@/lib/runtime/liveMode";
+import { isEmergencyFallbackEnabled, isLiveMode } from "@/lib/runtime/liveMode";
 import { getVincentConfig, isVincentConfigured, isVincentLiveReady } from "@/lib/vincent/client";
 import type { RuntimeCapabilities, RuntimeFamilyProof } from "@/lib/types";
 
@@ -164,14 +164,14 @@ export async function getRuntimeCapabilities(familyId?: string): Promise<Runtime
     generatedAt: new Date().toISOString(),
     liveMode: {
       enabled: isLiveMode(),
-      degradedModeAllowed: isDegradedModeAllowed(),
+      emergencyFallbackEnabled: isEmergencyFallbackEnabled(),
     },
     vincent: {
-      mode: vincentLive ? "live" : "local-only",
+      mode: vincentLive ? "live" : "blocked",
       baseUrl: vincentConfig.baseUrl,
       note: vincentLive
         ? "Vincent live mode is configured; Calma can use Vincent Connect auth and agent-wallet context."
-        : "Vincent live mode is not configured; the app will surface fallback execution clearly.",
+        : "Vincent live mode is not ready; live execution must remain blocked until configuration is complete.",
       appId: vincentConfig.appId,
       appVersion: vincentConfig.appVersion,
       redirectUri: vincentConfig.redirectUri,
@@ -188,7 +188,7 @@ export async function getRuntimeCapabilities(familyId?: string): Promise<Runtime
       network: "Ethereum Sepolia",
       policyContract: CONTRACTS.policy,
       evaluatorConfigured: Boolean(process.env.ZAMA_EVALUATOR_PRIVATE_KEY || process.env.ZAMA_PRIVATE_KEY),
-      note: "Confidential policy executes on Sepolia; the app must label encrypted vs heuristic decisions explicitly.",
+      note: "Confidential policy executes on Sepolia; encrypted evaluation is required for live execution.",
     },
     flow: {
       network: FLOW_TESTNET.name,
@@ -215,6 +215,7 @@ export async function getRuntimeCapabilities(familyId?: string): Promise<Runtime
       flowCore,
       zamaCore,
       litDelegation,
+      vincentCore: Boolean(isVincentConfigured() && vincentLive),
     },
     erc8004: {
       enabled: Boolean(

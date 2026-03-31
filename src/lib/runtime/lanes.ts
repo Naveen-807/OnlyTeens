@@ -45,7 +45,7 @@ export function buildLaneMetadata(params: {
       (params.executionLane === "guardian-autopilot-flow" ? "guardian-autopilot" : "none"),
     policyMode:
       params.policyMode ||
-      (params.executionLane === "direct-flow" ? "degraded" : "encrypted-live"),
+      (params.executionLane === "direct-flow" ? "not-applicable" : "encrypted-live"),
     flowMedium: "FLOW",
     guardianAutopilotEnabled: Boolean(params.guardianAutopilotEnabled),
   };

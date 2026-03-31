@@ -1,6 +1,7 @@
 import "server-only";
 
 import { CONTRACTS } from "@/lib/constants";
+import { assertLiveDependency, isLiveMode } from "@/lib/runtime/liveMode";
 import { evaluateWithVincentAPI, isVincentConfigured } from "@/lib/vincent/client";
 import type { ActionType, GuardrailResult } from "@/lib/types";
 
@@ -196,10 +197,20 @@ export async function evaluateVincentGuardrailsAsync(params: {
         },
       };
     } else {
-      // API error - log but don't block (fail-open for API issues)
+      if (isLiveMode()) {
+        throw new Error(
+          `LIVE_GUARDRAILS_UNAVAILABLE:Vincent live guardrail evaluation failed: ${apiResult.error || "unknown error"}`,
+        );
+      }
       console.warn("[Vincent] API evaluation failed:", apiResult.error);
     }
   }
+
+  assertLiveDependency(
+    !isLiveMode() || isVincentConfigured(),
+    "LIVE_GUARDRAILS_UNAVAILABLE",
+    "Vincent API must be configured for live execution",
+  );
 
   return localResult;
 }

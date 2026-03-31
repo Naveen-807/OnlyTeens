@@ -16,7 +16,7 @@ export type ApprovalMode =
   | "guardian-approval-required"
   | "guardian-approved"
   | "guardian-autopilot";
-export type PolicyMode = "encrypted-live" | "degraded";
+export type PolicyMode = "encrypted-live" | "degraded" | "not-applicable";
 export type FlowMedium = "FLOW";
 
 // ═══ Policy Decisions ═══
@@ -29,7 +29,7 @@ export type ActionType = "savings" | "subscription" | "payment";
 export type ScheduleType = "SAVINGS" | "SUBSCRIPTION";
 
 export interface VincentSessionContext {
-  mode: "live" | "fallback";
+  mode: "live" | "emergency-fallback";
   walletId?: string;
   walletAddress?: string;
   agentWalletAddress?: string;
@@ -436,10 +436,10 @@ export interface RuntimeCapabilities {
   generatedAt: string;
   liveMode?: {
     enabled: boolean;
-    degradedModeAllowed: boolean;
+    emergencyFallbackEnabled: boolean;
   };
   vincent: {
-    mode: "live" | "local-only";
+    mode: "live" | "blocked";
     baseUrl: string;
     note: string;
     appId?: string;
@@ -485,6 +485,7 @@ export interface RuntimeCapabilities {
     flowCore: boolean;
     zamaCore: boolean;
     litDelegation: boolean;
+    vincentCore?: boolean;
   };
   erc8004?: {
     enabled: boolean;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CreditCard, CheckCircle2, Clock, XCircle, Music, Tv, Gamepad2, ShoppingBag } from "lucide-react";
 
+import { fetchApi } from "@/lib/api/client";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export function SubscriptionFlow({
   const [result, setResult] = useState<FlowResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const getFailureLayer = (flow: FlowResult): string => {
     if (flow.guardrail?.decision === "BLOCK") {
@@ -59,26 +61,35 @@ export function SubscriptionFlow({
   const request = async () => {
     setLoading(true);
     setResult(null);
+    setSubmitError(null);
     try {
-      const res = await fetch("/api/subscription/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session,
-          familyId,
-          teenAddress,
-          guardianAddress,
-          teenName,
-          serviceName,
-          monthlyAmount,
-          clawrencePublicKey,
-        }),
-      });
-      const data = (await res.json()) as FlowResult;
+      const data = await fetchApi<FlowResult>(
+        "/api/subscription/request",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session,
+            familyId,
+            teenAddress,
+            guardianAddress,
+            teenName,
+            serviceName,
+            monthlyAmount,
+            clawrencePublicKey,
+          }),
+        },
+        "Subscription request failed",
+      );
       setResult(data);
       if (data.success) {
-        await useAuthStore.getState().refreshState();
+        const refreshResult = await useAuthStore.getState().refreshState();
+        if (!refreshResult.success) {
+          setSubmitError(refreshResult.error || "Subscription updated, but the dashboard could not refresh.");
+        }
       }
+    } catch (error: unknown) {
+      setSubmitError(error instanceof Error ? error.message : "Subscription request failed");
     } finally {
       setLoading(false);
     }
@@ -210,6 +221,14 @@ export function SubscriptionFlow({
           </Button>
         </CardContent>
       </Card>
+
+      {submitError ? (
+        <Card className="border-rose-500/30 bg-rose-950/30">
+          <CardContent className="p-4">
+            <p className="text-sm text-rose-300">{submitError}</p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Result Card */}
       {result && (

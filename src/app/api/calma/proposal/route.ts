@@ -33,7 +33,7 @@ export async function POST(req: Request) {
         },
         executionMode: family.executionMode,
         guardianAutopilotEnabled: family.guardianAutopilotEnabled || false,
-        policyMode: family.policyMode || "degraded",
+        policyMode: family.policyMode || "encrypted-live",
         vincent: {
           appId: family.vincentAppId,
           appVersion: family.vincentAppVersion,

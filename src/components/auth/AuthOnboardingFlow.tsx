@@ -64,7 +64,7 @@ export function AuthOnboardingFlow() {
     "Choose a role, request a demo OTP, then verify to bootstrap a real session.",
   );
   const [proof, setProof] = useState<any>(null);
-  const [vincentMode, setVincentMode] = useState<"live" | "local-only" | "unknown">("unknown");
+  const [vincentMode, setVincentMode] = useState<"live" | "blocked" | "unknown">("unknown");
 
   const roleInfo = useMemo(() => roleMeta[role], [role]);
 
@@ -75,7 +75,7 @@ export function AuthOnboardingFlow() {
       .then((data) => {
         if (!mounted) return;
         const mode = data?.capabilities?.vincent?.mode;
-        setVincentMode(mode === "live" ? "live" : mode === "local-only" ? "local-only" : "unknown");
+        setVincentMode(mode === "live" ? "live" : mode === "blocked" ? "blocked" : "unknown");
       })
       .catch(() => {
         if (!mounted) return;
@@ -148,7 +148,7 @@ export function AuthOnboardingFlow() {
         guardrailReason:
           vincentMode === "live"
             ? "Vincent live mode is available for execution checks."
-            : "Using local-only guardrails until Vincent API is configured.",
+            : "Vincent live mode is not ready yet, so execution remains blocked.",
         litAuthorized: true,
         litActionCid: data.session?.authMethod?.authMethodId || "",
         flowTxHash: undefined,

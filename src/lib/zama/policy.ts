@@ -6,7 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { CONTRACTS, POLICY_ABI, SEPOLIA } from "@/lib/constants";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
-import { assertLiveMode } from "@/lib/runtime/liveMode";
+import { assertLiveDependency, assertLiveMode } from "@/lib/runtime/liveMode";
 import { normalizePrivateKeyEnv } from "@/lib/runtime/privateKey";
 import { getFhevmInstance } from "@/lib/zama/client";
 import {
@@ -130,14 +130,15 @@ export async function evaluateAction(params: {
 }): Promise<{ decision: PolicyDecision; txHash: string; source: "encrypted" | "heuristic" }> {
   assertContractConfigForDemo();
   const account = params.account ?? getEvaluatorAccount();
-  assertLiveMode(
+  assertLiveDependency(
     Boolean(account),
-    "POLICY_UNAVAILABLE:Missing evaluator account for encrypted policy evaluation",
+    "LIVE_POLICY_UNAVAILABLE",
+    "Missing evaluator account for encrypted policy evaluation",
   );
   if (!account) {
     if (isDemoStrictMode() || params.requireEncrypted) {
       throw new Error(
-        "POLICY_UNAVAILABLE:Missing evaluator account for encrypted policy evaluation",
+        "LIVE_POLICY_UNAVAILABLE:Missing evaluator account for encrypted policy evaluation",
       );
     }
     console.warn("[Zama] No evaluator account - using heuristic fallback");
@@ -178,13 +179,14 @@ export async function evaluateAction(params: {
       decision = decisionFromUint8(latestDecision.decision);
       source = "encrypted";
     } catch (latestDecisionError) {
-      console.warn("[Zama] Failed to decrypt latest decision, trying policy fallback:", latestDecisionError);
-      assertLiveMode(
+      console.warn("[Zama] Failed to decrypt latest decision:", latestDecisionError);
+      assertLiveDependency(
         false,
-        `POLICY_UNAVAILABLE:Encrypted policy decryption failed: ${String(latestDecisionError)}`,
+        "LIVE_POLICY_UNAVAILABLE",
+        `Encrypted policy decryption failed: ${String(latestDecisionError)}`,
       );
       if (params.requireEncrypted) {
-        throw new Error(`POLICY_UNAVAILABLE:Encrypted policy decryption failed: ${latestDecisionError}`);
+        throw new Error(`LIVE_POLICY_UNAVAILABLE:Encrypted policy decryption failed: ${latestDecisionError}`);
       }
       try {
         const policy = await serverDecryptPolicy({
@@ -204,9 +206,10 @@ export async function evaluateAction(params: {
         source = "heuristic";
         console.warn("[Zama] Using local policy computation as fallback");
       } catch (policyError) {
-        assertLiveMode(
+        assertLiveDependency(
           false,
-          `POLICY_UNAVAILABLE:Policy decryption failed: ${String(policyError)}`,
+          "LIVE_POLICY_UNAVAILABLE",
+          `Policy decryption failed: ${String(policyError)}`,
         );
         if (isDemoStrictMode() || params.requireEncrypted) {
           throw latestDecisionError;
@@ -215,6 +218,12 @@ export async function evaluateAction(params: {
       }
     }
   }
+
+  assertLiveDependency(
+    source === "encrypted",
+    "LIVE_POLICY_UNAVAILABLE",
+    "Encrypted Zama evaluation is required for live execution",
+  );
 
   return { decision, txHash, source };
 }

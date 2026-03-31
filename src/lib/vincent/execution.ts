@@ -3,8 +3,9 @@ import "server-only";
 import { getServiceAccount } from "@/lib/flow/clients";
 import { getFamilyById } from "@/lib/onboarding/familyService";
 import { isChipotleConfigured } from "@/lib/lit/chipotle";
+import { assertLiveDependency } from "@/lib/runtime/liveMode";
 import type { ExecutionMode } from "@/lib/types";
-import { getAgentWallet, isVincentConfigured } from "@/lib/vincent/client";
+import { getAgentWallet, isVincentConfigured, isVincentLiveReady } from "@/lib/vincent/client";
 
 export async function getClawrenceExecutionContext(
   familyId: string,
@@ -37,11 +38,25 @@ export async function getClawrenceExecutionContext(
   let walletAddress = selectedTeen?.vincentWalletAddress || family.vincentWalletAddress;
   const configured = isVincentConfigured();
   if (configured && !walletAddress) {
-    const wallet = await getAgentWallet();
+    const wallet = await getAgentWallet({
+      userControllerAddress: family.guardianAddress,
+      appId: family.vincentAppId,
+    });
     if (wallet.success && wallet.data?.address) {
       walletAddress = wallet.data.address;
     }
   }
+
+  assertLiveDependency(
+    isVincentLiveReady(),
+    "LIVE_DEPENDENCY_UNAVAILABLE",
+    "Vincent app configuration is incomplete for live execution",
+  );
+  assertLiveDependency(
+    Boolean(configured && walletAddress),
+    "LIVE_DEPENDENCY_UNAVAILABLE",
+    "Vincent live wallet is required for Calma execution",
+  );
 
   const live = Boolean(configured && walletAddress);
   const executionMode: ExecutionMode = live
@@ -62,7 +77,7 @@ export async function getClawrenceExecutionContext(
       walletId: selectedTeen?.vincentWalletId || family.vincentWalletId,
       note: live
         ? "Vincent wallet is configured and selected as Calma's primary execution surface."
-        : "Vincent wallet is unavailable; execution falls back to the Chipotle/local sponsored path.",
+        : "Vincent wallet is unavailable; live execution is blocked.",
     },
   };
 }

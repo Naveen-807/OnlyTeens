@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { parseAbi, keccak256, stringToBytes, toHex, type Chain } from "viem";
+import { resolveDeploymentContract } from "@/lib/runtime/deploymentArtifacts";
 
 type DeploymentsJson = {
   contracts?: {
@@ -9,6 +10,7 @@ type DeploymentsJson = {
     vault?: { address?: string };
     scheduler?: { address?: string };
     passport?: { address?: string };
+    policy?: { address?: string };
   };
 };
 
@@ -23,6 +25,11 @@ function readDeployments(): DeploymentsJson | null {
 }
 
 const deployments = readDeployments();
+const deploymentAccess = resolveDeploymentContract("access");
+const deploymentVault = resolveDeploymentContract("vault");
+const deploymentScheduler = resolveDeploymentContract("scheduler");
+const deploymentPassport = resolveDeploymentContract("passport");
+const deploymentPolicy = resolveDeploymentContract("policy");
 
 // ═══ Chain Config ═══
 export const FLOW_TESTNET = {
@@ -54,27 +61,33 @@ export const SEPOLIA = {
 // ═══ Contract Addresses ═══
 export const CONTRACTS = {
   access:
-    (deployments?.contracts?.access?.address ||
+    (deploymentAccess?.address ||
+      deployments?.contracts?.access?.address ||
       process.env.NEXT_PUBLIC_ACCESS_CONTRACT ||
       process.env.ACCESS_CONTRACT ||
       "0x0000000000000000000000000000000000000000") as `0x${string}`,
   vault:
-    (deployments?.contracts?.vault?.address ||
+    (deploymentVault?.address ||
+      deployments?.contracts?.vault?.address ||
       process.env.NEXT_PUBLIC_VAULT_CONTRACT ||
       process.env.VAULT_CONTRACT ||
       "0x0000000000000000000000000000000000000000") as `0x${string}`,
   scheduler:
-    (deployments?.contracts?.scheduler?.address ||
+    (deploymentScheduler?.address ||
+      deployments?.contracts?.scheduler?.address ||
       process.env.NEXT_PUBLIC_SCHEDULER_CONTRACT ||
       process.env.SCHEDULER_CONTRACT ||
       "0x0000000000000000000000000000000000000000") as `0x${string}`,
   passport:
-    (deployments?.contracts?.passport?.address ||
+    (deploymentPassport?.address ||
+      deployments?.contracts?.passport?.address ||
       process.env.NEXT_PUBLIC_PASSPORT_CONTRACT ||
       process.env.PASSPORT_CONTRACT ||
       "0x0000000000000000000000000000000000000000") as `0x${string}`,
   policy:
-    (process.env.NEXT_PUBLIC_POLICY_CONTRACT ||
+    (deploymentPolicy?.address ||
+      deployments?.contracts?.policy?.address ||
+      process.env.NEXT_PUBLIC_POLICY_CONTRACT ||
       process.env.POLICY_CONTRACT ||
       "0x0000000000000000000000000000000000000000") as `0x${string}`,
 } as const;

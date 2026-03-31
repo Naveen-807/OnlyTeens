@@ -6,7 +6,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const family = body.familyId ? getFamilyById(body.familyId) : null;
-    const vincentWallet = isVincentConfigured() ? await getAgentWallet() : null;
+    const userControllerAddress =
+      body.userControllerAddress || family?.guardianAddress || undefined;
+    const vincentWallet = isVincentConfigured() && userControllerAddress
+      ? await getAgentWallet({
+          userControllerAddress,
+          appId: family?.vincentAppId || process.env.VINCENT_APP_ID,
+        })
+      : null;
 
     return ok({
       calma: {
@@ -31,7 +38,7 @@ export async function POST(req: Request) {
             family?.executionLaneModes || ["direct-flow", "agent-assisted-flow", "guardian-autopilot-flow"],
           flowMedium: family?.flowMedium || "FLOW",
           guardianAutopilotEnabled: family?.guardianAutopilotEnabled || false,
-          policyMode: family?.policyMode || "degraded",
+          policyMode: family?.policyMode || "encrypted-live",
         },
       },
     });

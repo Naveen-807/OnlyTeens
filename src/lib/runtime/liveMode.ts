@@ -2,8 +2,8 @@ export function isLiveMode(): boolean {
   return process.env.PROOF18_LIVE_MODE === "true";
 }
 
-export function isDegradedModeAllowed(): boolean {
-  return process.env.PROOF18_ALLOW_DEGRADED_MODE === "true";
+export function isEmergencyFallbackEnabled(): boolean {
+  return process.env.PROOF18_ENABLE_EMERGENCY_FALLBACK === "true";
 }
 
 export function assertLiveMode(condition: boolean, message: string): void {
@@ -13,5 +13,9 @@ export function assertLiveMode(condition: boolean, message: string): void {
 }
 
 export function assertNoSilentFallback(message: string): void {
-  assertLiveMode(isDegradedModeAllowed(), message);
+  assertLiveMode(!isEmergencyFallbackEnabled(), message);
+}
+
+export function assertLiveDependency(condition: boolean, code: string, message: string): void {
+  assertLiveMode(condition, `${code}:${message}`);
 }

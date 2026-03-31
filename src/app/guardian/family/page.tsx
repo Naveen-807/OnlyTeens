@@ -17,8 +17,8 @@ export default function GuardianFamilyPage() {
   const vincentMode =
     capabilities?.vincent.mode === "live"
       ? "live"
-      : capabilities?.vincent.mode === "local-only"
-        ? "local-only"
+      : capabilities?.vincent.mode === "blocked"
+        ? "blocked"
         : "unknown";
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function GuardianFamilyPage() {
                 Flow runtime
               </div>
               <p className="font-mono text-xs text-foreground break-all leading-5">
-                {family.executionMode || "local-fallback"}
+                {family.executionMode || "vincent-live"}
                 <br />
                 {capabilities?.flow.walletMode || family.walletMode || "app-managed"} ·{" "}
                 {capabilities?.flow.gasMode || family.gasMode || "user-funded"}
@@ -135,7 +135,7 @@ export default function GuardianFamilyPage() {
           guardrailReason:
             vincentMode === "live"
               ? capabilities?.vincent.note || "Runtime reports live Vincent API mode."
-              : capabilities?.vincent.note || "Runtime reports local guardrails mode.",
+              : capabilities?.vincent.note || "Runtime reports blocked Vincent guardrails.",
           litAuthorized:
             capabilities?.lit.familyProof.permissions.authorized ||
             capabilities?.lit.familyProof.litActionMatchesRuntimeCid ||

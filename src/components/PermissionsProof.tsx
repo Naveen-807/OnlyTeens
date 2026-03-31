@@ -47,29 +47,29 @@ export function PermissionsProof({
   safeExecutorCid: string;
   permittedScopes?: string[];
   proof?: PermissionsProofState;
-  vincentMode?: "live" | "local-only" | "unknown";
+  vincentMode?: "live" | "blocked" | "unknown";
   capabilities?: RuntimeCapabilities;
   className?: string;
 }) {
   const vincentLabel =
     vincentMode === "live"
       ? "LIVE API"
-      : vincentMode === "local-only"
-        ? "LOCAL ONLY"
+      : vincentMode === "blocked"
+        ? "BLOCKED"
         : "RUNTIME";
 
   const vincentLabelClass =
     vincentMode === "live"
       ? "border-emerald-500/30 bg-emerald-950/60 text-emerald-400"
-      : vincentMode === "local-only"
-        ? "border-slate-500/30 bg-slate-950/60 text-slate-400"
+      : vincentMode === "blocked"
+        ? "border-rose-500/30 bg-rose-950/60 text-rose-300"
         : "border-blue-500/30 bg-blue-950/60 text-blue-300";
 
   const vincentCopy =
     vincentMode === "live"
       ? "Guardian-delegated Vincent API guardrails are active for this run"
-      : vincentMode === "local-only"
-        ? "Vincent API is not configured; local scoped guardrails are enforced"
+      : vincentMode === "blocked"
+        ? "Vincent live mode is not ready, so execution is blocked until the dependency is fixed"
         : "Vincent mode is detected at runtime before execution";
 
   return (
@@ -313,8 +313,8 @@ export function PermissionsProof({
                 <div className="rounded-xl border border-border/55 px-3 py-2">
                   <p className="font-medium text-foreground">Runtime mode</p>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {capabilities.lit.familyProof.executionMode || "local-fallback"}
-                    {capabilities.lit.familyProof.fallbackActive ? " · fallback" : " · live"}
+                    {capabilities.lit.familyProof.executionMode || "vincent-live"}
+                    {capabilities.lit.familyProof.fallbackActive ? " · emergency" : " · live"}
                   </p>
                 </div>
               </div>

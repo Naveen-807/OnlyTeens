@@ -28,6 +28,20 @@ describe("Onboarding runtime guards", function () {
     ).to.equal(true);
   });
 
+  it("waits for auth hydration before showing login prompts", function () {
+    const authStore = readText("src/store/authStore.ts");
+    const teenLayout = readText("src/app/teen/layout.tsx");
+    const guardianLayout = readText("src/app/guardian/layout.tsx");
+
+    expect(authStore).to.include("hasHydrated: boolean");
+    expect(authStore).to.include("markHydrated");
+    expect(authStore).to.include("onRehydrateStorage");
+    expect(teenLayout).to.include("hasHydrated");
+    expect(teenLayout).to.include("Restoring your session...");
+    expect(guardianLayout).to.include("hasHydrated");
+    expect(guardianLayout).to.include("Restoring your session...");
+  });
+
   it("keeps family onboarding on the canonical phone auth endpoints", function () {
     const otpCard = readText("src/components/PhoneOtpAuthCard.tsx");
 

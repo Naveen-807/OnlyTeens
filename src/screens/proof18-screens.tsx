@@ -205,7 +205,7 @@ function TeenSavingsGoalsScreen() {
               <ActionSummaryCard
                 key={`${entry.label}-${index}`}
                 title={entry.label}
-                amount={`$${entry.amount.toFixed(2)}`}
+                amount={`${entry.amount.toFixed(2)} FLOW`}
                 body={`Logged ${entry.time}. This history helps explain how the goal moved.`}
               />
             ))}
@@ -245,7 +245,7 @@ function TeenRequestActionScreen() {
           </FormCard>
           <ActionSummaryCard
             title="Clawrence explanation"
-            amount="$14.99 / mo"
+            amount="14.99 FLOW / mo"
             body="This request repeats each month, touches the education category, and sits above the current auto-renew band."
           />
         </div>
@@ -274,7 +274,7 @@ function TeenSubscriptionsScreen() {
     <div className="space-y-4">
       <TopNavigation title="Subscriptions" subtitle="requested, active, renewal labels, and monthly cost" />
       <div className="grid gap-4 md:grid-cols-3">
-        <ActionSummaryCard title="Monthly summary" amount={`$${monthly.toFixed(2)}`} body="Active recurring commitments currently inside the household rhythm." />
+        <ActionSummaryCard title="Monthly summary" amount={`${monthly.toFixed(2)} FLOW`} body="Active recurring commitments currently inside the household rhythm." />
         <ActionSummaryCard title="Active subscriptions" amount={String(active.length)} body="Recurring services already approved and funded." />
         <ActionSummaryCard title="Approval status" amount={String(requested.length)} body="Requests still awaiting a decision or denied." />
       </div>
@@ -409,7 +409,7 @@ function ParentTreasuryScreen() {
       <TopNavigation title="Treasury" subtitle="family balance, allocations, funding history, outgoing commitments" />
       <MomentumMetricsBlock
         metrics={[
-          { label: "Family balance", value: `$${wallet.treasuryBalance.toFixed(0)}`, delta: "seeded", description: "Available household treasury for teen actions." },
+          { label: "Family balance", value: `${wallet.treasuryBalance.toFixed(0)} FLOW`, delta: "seeded", description: "Available household treasury for teen actions." },
           { label: "Allowance cadence", value: "7d", delta: "weekly", description: "Current allowance schedule." },
           { label: "Outgoing commitments", value: "2", delta: "stable", description: "Recurring or approved obligations." },
           { label: "Evidence bundles", value: `${history.length}`, delta: "live", description: "Receipts preserved for household memory." },
@@ -425,9 +425,9 @@ function ParentRulesScreen() {
     <div className="space-y-4">
       <TopNavigation title="Rules & Limits" subtitle="max spend, recurring cap, categories, savings rules, emergency pause" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <ActionSummaryCard title="Max daily spend" amount={`$${rules.maxDailySpend}`} body="Teen can move through the day without checking each tiny action." />
-        <ActionSummaryCard title="Max single spend" amount={`$${rules.maxSingleSpend}`} body="One-off requests above this band escalate." />
-        <ActionSummaryCard title="Recurring cap" amount={`$${rules.recurringCap}`} body="Subscriptions above this amount require parent approval." />
+        <ActionSummaryCard title="Max daily spend" amount={`${rules.maxDailySpend} FLOW`} body="Teen can move through the day without checking each tiny action." />
+        <ActionSummaryCard title="Max single spend" amount={`${rules.maxSingleSpend} FLOW`} body="One-off requests above this band escalate." />
+        <ActionSummaryCard title="Recurring cap" amount={`${rules.recurringCap} FLOW`} body="Subscriptions above this amount require parent approval." />
         <ActionSummaryCard title="Approved categories" amount={String(rules.approvedCategories.length)} body={rules.approvedCategories.join(" · ")} />
         <ActionSummaryCard title="Blocked categories" amount={String(rules.blockedCategories.length)} body={rules.blockedCategories.join(" · ")} />
         <ActionSummaryCard title="Emergency pause" amount={rules.emergencyPause ? "On" : "Off"} body="Emergency pause is fully designed and visible in the wallet layer." />
@@ -536,7 +536,7 @@ function SharedActionDetailsScreen() {
     <div className="space-y-4">
       <TopNavigation title="Action Details" subtitle="shared action detail surface" />
       <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-        <ActionSummaryCard title={item.title} amount={`$${item.amount.toFixed(2)}`} body={`Status: ${item.status}. Policy: ${item.policy}. Approval needed: ${item.approvalNeeded ? "Yes" : "No"}.`} />
+        <ActionSummaryCard title={item.title} amount={`${item.amount.toFixed(2)} FLOW`} body={`Status: ${item.status}. Policy: ${item.policy}. Approval needed: ${item.approvalNeeded ? "Yes" : "No"}.`} />
         <div className="space-y-4">
           <ConfidentialPolicyResult policy={item.policy} />
           <EvidenceReferenceSurface reference={item.evidenceRef} />
@@ -623,7 +623,7 @@ function SubscriptionColumn({
           <ActionSummaryCard
             key={item.id}
             title={item.name}
-            amount={`$${item.amount.toFixed(2)}`}
+            amount={`${item.amount.toFixed(2)} FLOW`}
             body={`Status: ${item.status}. Renewal label: ${item.renewsOn}.`}
           />
         ))

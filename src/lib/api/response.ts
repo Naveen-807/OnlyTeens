@@ -12,6 +12,8 @@ export type ApiErrorCode =
   | "LIVE_DEPENDENCY_UNAVAILABLE"
   | "CONTRACT_MISCONFIGURED"
   | "DEPLOYMENT_MISMATCH"
+  | "DEFI_DISABLED"
+  | "DEFI_LIMIT_EXCEEDED"
   | "BAD_REQUEST"
   | "NOT_FOUND"
   | "INTERNAL_ERROR";
@@ -48,6 +50,8 @@ export function mapErrorToCode(error: unknown): ApiErrorCode {
   if (message.startsWith("LIVE_DEPENDENCY_UNAVAILABLE")) return "LIVE_DEPENDENCY_UNAVAILABLE";
   if (message.startsWith("CONTRACT_MISCONFIGURED")) return "CONTRACT_MISCONFIGURED";
   if (message.startsWith("DEPLOYMENT_MISMATCH")) return "DEPLOYMENT_MISMATCH";
+  if (message.startsWith("DEFI_DISABLED")) return "DEFI_DISABLED";
+  if (message.startsWith("DEFI_LIMIT_EXCEEDED")) return "DEFI_LIMIT_EXCEEDED";
   if (message.includes("POLICY_UNAVAILABLE")) return "POLICY_UNAVAILABLE";
   if (message.includes("permission") || message.includes("PERMISSION_DENIED")) {
     return "PERMISSION_DENIED";

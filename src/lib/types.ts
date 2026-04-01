@@ -272,6 +272,7 @@ export interface Proof18Receipt {
     riskLevel: DeFiRiskLevel;
     estimatedApr?: number;
     targetAmount?: string;
+    portfolio?: DeFiPortfolioState;
   };
   approvalRecord?: {
     guardianApproved: boolean;

@@ -144,7 +144,7 @@ export const useProof18Store = create<Proof18Store>((set, get) => ({
     level: "Steady Hands",
     streak: 5,
     nextUnlockTarget: 85,
-    unlockedPermissions: ["Small purchases", "Goal transfers", "Auto-renew under $8"],
+    unlockedPermissions: ["Small purchases", "Goal transfers", "Auto-renew under 8 FLOW"],
     log: [
       { label: "Saved before spending", delta: 6, time: "Today" },
       { label: "Subscription stayed within category limits", delta: 3, time: "Yesterday" },

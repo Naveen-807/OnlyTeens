@@ -37,14 +37,37 @@ describe("Runtime readiness surfaces", function () {
     const subscriptionFlow = readText("src/components/SubscriptionFlow.tsx");
     const inbox = readText("src/app/guardian/inbox/page.tsx");
     const chat = readText("src/components/ClawrenceChat.tsx");
+    const chatRoute = readText("src/app/api/chat/route.ts");
+    const engine = readText("src/lib/clawrence/engine.ts");
 
     expect(savingsFlow).to.include("setSubmitError");
-    expect(savingsFlow).to.include("fetchApi");
+    expect(savingsFlow).to.include("fetchJson");
     expect(subscriptionFlow).to.include("setSubmitError");
-    expect(subscriptionFlow).to.include("fetchApi");
+    expect(subscriptionFlow).to.include("fetchJson");
     expect(inbox).to.include("fetchApi");
     expect(chat).to.include("fetchJson");
     expect(chat).to.include('data.type === "error"');
+    expect(chat).to.include("cachedPassport");
+    expect(chat).to.include("cachedBalances");
+    expect(chatRoute).to.include("Promise.allSettled");
+    expect(chatRoute).to.include("cachedPassport");
+    expect(chatRoute).to.include("cachedBalances");
+    expect(chatRoute).to.include("defaultPassportState");
+    expect(chatRoute).to.include("defaultBalances");
+    expect(engine).to.include("fetch failed");
+    expect(engine).to.include("socket hang up");
+  });
+
+  it("keeps generated Flow wallets funded before execution", function () {
+    const walletSession = readText("src/lib/flow/walletSession.ts");
+    const viemAccount = readText("src/lib/lit/viemAccount.ts");
+
+    expect(walletSession).to.include("ensurePhoneWalletFunded");
+    expect(walletSession).to.include("FLOW_PHONE_WALLET_TOP_UP_FLOW");
+    expect(walletSession).to.include("flowPublicClient.getBalance");
+    expect(walletSession).to.include("flowWalletClient.sendTransaction");
+    expect(walletSession).to.include("fundingTxHash");
+    expect(viemAccount).to.include("await getFlowWalletAccount");
   });
 
   it("enforces live-only execution semantics across runtime and orchestration layers", function () {

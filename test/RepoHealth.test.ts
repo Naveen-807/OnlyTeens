@@ -42,6 +42,7 @@ describe("Repo health and safety wiring", function () {
     const subscriptionFlow = readText("src/lib/orchestration/subscriptionFlow.ts");
     const onboarding = readText("src/app/api/onboarding/family/route.ts");
     const phoneVerify = readText("src/app/api/auth/phone/verify/route.ts");
+    const walletSession = readText("src/lib/flow/walletSession.ts");
 
     expect(savingsFlow).to.include("getClawrenceAccount(");
     expect(savingsFlow).to.include("params.familyId");
@@ -57,6 +58,7 @@ describe("Repo health and safety wiring", function () {
 
     expect(onboarding).to.include("ensureFamilyChipotleProvision");
     expect(onboarding).to.include("bindPhoneSessionToWallet");
+    expect(onboarding).to.include("await getFlowWalletAccount");
     expect(onboarding).to.include("chipotleAccountId");
     expect(onboarding).to.include("linkedTeens");
 
@@ -64,6 +66,9 @@ describe("Repo health and safety wiring", function () {
     expect(phoneVerify).to.include('authChannel: "phone-otp"');
     expect(phoneVerify).to.include("storedSession.address");
     expect(phoneVerify).to.include("storedSession.pkpAddress");
+    expect(walletSession).to.include("ensurePhoneWalletFunded");
+    expect(walletSession).to.include("fundingTargetFlow");
+    expect(walletSession).to.include("fundedBalanceFlow");
   });
 
   it("keeps the policy contract encrypted evaluation path in place", function () {

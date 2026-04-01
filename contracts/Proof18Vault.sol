@@ -80,7 +80,8 @@ contract Proof18Vault {
         require(savingsBalance[familyId][teen] >= amount, "Insufficient");
 
         savingsBalance[familyId][teen] -= amount;
-        payable(msg.sender).transfer(amount);
+        (bool sent, ) = payable(msg.sender).call{value: amount}("");
+        require(sent, "Transfer failed");
         emit SavingsWithdraw(familyId, teen, amount, block.timestamp);
     }
 
@@ -112,7 +113,8 @@ contract Proof18Vault {
         require(subscriptionReserve[familyId][teen] >= amount, "Insufficient reserve");
 
         subscriptionReserve[familyId][teen] -= amount;
-        recipient.transfer(amount);
+        (bool sent, ) = recipient.call{value: amount}("");
+        require(sent, "Transfer failed");
         emit SubscriptionPaid(familyId, teen, serviceName, amount, recipient, block.timestamp);
     }
 

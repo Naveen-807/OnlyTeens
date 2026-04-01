@@ -104,6 +104,7 @@ contract Proof18Scheduler {
             require(msg.value == s.amount, "Missing savings value");
             vault.depositSavings{value: s.amount}(s.familyId, s.teen);
         } else {
+            require(msg.value == 0, "Unexpected value");
             require(s.recipient != address(0), "Invalid recipient");
             vault.executeSubscriptionPayment(s.familyId, s.teen, s.label, s.amount, s.recipient);
         }

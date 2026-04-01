@@ -6,7 +6,7 @@ import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { config as loadEnv } from "dotenv";
 
-import { LIVE_REQUIRED_ENV } from "../src/lib/runtime/config";
+import { LIVE_REQUIRED_ENV, assertClawrenceAiConfig } from "../src/lib/runtime/config";
 import {
   resolveDeploymentContract,
   writeDeploymentHealthArtifact,
@@ -199,7 +199,9 @@ function assertVincentConfig() {
   requiredEnv("VINCENT_APP_VERSION");
   requiredEnv("VINCENT_REDIRECT_URI");
   requiredEnv("VINCENT_JWT_AUDIENCE");
-  normalizePrivateKeyEnv("VINCENT_DELEGATEE_PRIVATE_KEY", process.env.VINCENT_DELEGATEE_PRIVATE_KEY);
+  if (process.env.VINCENT_DELEGATEE_PRIVATE_KEY) {
+    normalizePrivateKeyEnv("VINCENT_DELEGATEE_PRIVATE_KEY", process.env.VINCENT_DELEGATEE_PRIVATE_KEY);
+  }
   console.log("  Vincent app auth surface configured");
 }
 
@@ -285,6 +287,7 @@ async function main() {
   await assertLitActionCidResolvable(actionCid);
 
   assertStorachaCreds();
+  assertClawrenceAiConfig();
   assertMintingKeys();
   const evaluator = getPrivateKeyAccount(
     "ZAMA_EVALUATOR_PRIVATE_KEY",

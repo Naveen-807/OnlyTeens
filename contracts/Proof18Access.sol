@@ -119,6 +119,7 @@ contract Proof18Access {
         require(teenRegistry[familyId].length > 1, "Cannot remove last teen");
 
         teenMembers[familyId][teen] = false;
+        _removeTeenFromRegistry(familyId, teen);
         if (teens[familyId] == teen) {
             teens[familyId] = _nextActiveTeen(familyId);
         }
@@ -167,5 +168,18 @@ contract Proof18Access {
             }
         }
         return address(0);
+    }
+
+    function _removeTeenFromRegistry(bytes32 familyId, address teen) private {
+        address[] storage registry = teenRegistry[familyId];
+        uint256 length = registry.length;
+
+        for (uint256 i = 0; i < length; i++) {
+            if (registry[i] == teen) {
+                registry[i] = registry[length - 1];
+                registry.pop();
+                return;
+            }
+        }
     }
 }

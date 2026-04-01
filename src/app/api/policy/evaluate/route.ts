@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { fail, mapErrorToCode, ok } from "@/lib/api/response";
+import { flowToPolicyUnits } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { evaluateAction } from "@/lib/zama/policy";
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     const result = await evaluateAction({
       familyId: body.familyId,
       teenAddress: body.teenAddress,
-      amount: body.amount,
+      amount: flowToPolicyUnits(body.amount),
       passportLevel: body.passportLevel,
       isRecurring: body.isRecurring ?? false,
       account: body.account,

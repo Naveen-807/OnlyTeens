@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       serviceName: body.serviceName,
       monthlyAmount: body.monthlyAmount,
       clawrencePublicKey: body.clawrencePublicKey,
+      recipientAddress: body.recipientAddress,
     });
 
     if (result.requiresApproval && result.approvalRequest) {

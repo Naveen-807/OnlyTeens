@@ -35,7 +35,6 @@ export const LIVE_REQUIRED_ENV = {
     "VINCENT_APP_VERSION",
     "VINCENT_REDIRECT_URI",
     "VINCENT_JWT_AUDIENCE",
-    "VINCENT_DELEGATEE_PRIVATE_KEY",
   ],
   erc8004: [
     "CALMA_OPERATOR_PRIVATE_KEY",
@@ -43,8 +42,32 @@ export const LIVE_REQUIRED_ENV = {
     "ERC8004_REPUTATION_REGISTRY_ADDRESS",
     "ERC8004_VALIDATION_REGISTRY_ADDRESS",
   ],
-  storageAndAi: ["STORACHA_KEY", "STORACHA_PROOF", "OPENAI_API_KEY"],
+  storageAndAi: ["STORACHA_KEY", "STORACHA_PROOF"],
 } as const;
+
+const AI_KEY_PLACEHOLDERS = new Set(["sk-your-key", "sk-or-v1-your-openrouter-key"]);
+
+function normalizeAiKey(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed || AI_KEY_PLACEHOLDERS.has(trimmed)) return undefined;
+  return trimmed;
+}
+
+export function getClawrenceApiKey(): string | undefined {
+  return normalizeAiKey(process.env.OPENROUTER_API_KEY) || normalizeAiKey(process.env.OPENAI_API_KEY);
+}
+
+export function isOpenRouterConfigured(): boolean {
+  const openRouterKey = normalizeAiKey(process.env.OPENROUTER_API_KEY);
+  const legacyApiKey = normalizeAiKey(process.env.OPENAI_API_KEY);
+  return Boolean(openRouterKey || legacyApiKey?.startsWith("sk-or-"));
+}
+
+export function assertClawrenceAiConfig(): void {
+  if (!getClawrenceApiKey()) {
+    throw new Error("MISSING_CONFIG:OPENROUTER_API_KEY or OPENAI_API_KEY is not configured");
+  }
+}
 
 export function isZeroAddress(value?: string): boolean {
   return !value || value.toLowerCase() === ZERO_ADDRESS;
@@ -99,6 +122,7 @@ export function assertContractConfigForDemo(): void {
       ...LIVE_REQUIRED_ENV.erc8004,
       ...LIVE_REQUIRED_ENV.storageAndAi,
     ]);
+    assertClawrenceAiConfig();
 
     if (isZeroAddress(process.env.ZAMA_KMS_CONTRACT_ADDRESS)) {
       throw new Error("MISSING_CONFIG:ZAMA_KMS_CONTRACT_ADDRESS is not configured");

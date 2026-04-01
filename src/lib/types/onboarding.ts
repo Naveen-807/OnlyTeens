@@ -1,4 +1,5 @@
 import type {
+  DeFiPolicy,
   ExecutionLane,
   ExecutionMode,
   FlowMedium,
@@ -112,6 +113,7 @@ export interface FamilyRecord {
   flowNativeFeaturesUsed?: string[];
   guardianAutopilotEnabled?: boolean;
   policyMode?: PolicyMode;
+  defiPolicy?: DeFiPolicy;
   linkedTeens?: LinkedTeenAccount[];
   createdAt: string;
   active: boolean;

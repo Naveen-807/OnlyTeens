@@ -170,5 +170,7 @@ export function makeFamilyId(label: string): `0x${string}` {
   return keccak256(toHex(stringToBytes(label))) as `0x${string}`;
 }
 
-export const CURRENCY = "₹";
+export const CURRENCY = "FLOW";
 export const SAFE_EXECUTOR_CID = process.env.NEXT_PUBLIC_SAFE_EXECUTOR_CID || process.env.SAFE_EXECUTOR_CID || "";
+export const SUBSCRIPTION_RECIPIENT_ADDRESS =
+  process.env.SUBSCRIPTION_RECIPIENT_ADDRESS || "0x000000000000000000000000000000000000dead";

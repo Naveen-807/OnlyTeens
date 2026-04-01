@@ -1,6 +1,7 @@
 import "server-only";
 
 import { CONTRACTS, FLOW_TESTNET, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { getDefaultDefiPolicy, getFamilyDefiPolicy } from "@/lib/defi/portfolio";
 import { getFlowRuntimeProfile } from "@/lib/flow/runtimeProfile";
 import { getChipotleBaseUrl, isChipotleConfigured } from "@/lib/lit/chipotle";
 import { getPermissions } from "@/lib/lit/permissions";
@@ -137,6 +138,10 @@ export async function getRuntimeCapabilities(familyId?: string): Promise<Runtime
   const vincentConfig = getVincentConfig();
   const vincentLive = isVincentLiveReady();
   const chipotleLive = isChipotleConfigured();
+  const defiPolicy =
+    familyProof.available && familyProof.familyId
+      ? getFamilyDefiPolicy(familyProof.familyId)
+      : getDefaultDefiPolicy();
 
   const flowCore =
     isConfiguredAddress(CONTRACTS.access) &&
@@ -204,6 +209,15 @@ export async function getRuntimeCapabilities(familyId?: string): Promise<Runtime
       preferredSchedulerBackend: flowRuntime.schedulerBackend,
       nativeSchedulingConfigured: flowRuntime.nativeSchedulingConfigured,
       flowNativeFeaturesUsed: flowRuntime.flowNativeFeaturesUsed,
+    },
+    defi: {
+      enabled: defiPolicy.enabled,
+      strategy: defiPolicy.strategy,
+      riskLevel: defiPolicy.riskLevel,
+      allowedProtocols: defiPolicy.allowedProtocols,
+      maxAllocationBps: defiPolicy.maxAllocationBps,
+      maxSlippageBps: defiPolicy.maxSlippageBps,
+      allowRecurringEarn: defiPolicy.allowRecurringEarn,
     },
     executionLanes: ["direct-flow", "agent-assisted-flow", "guardian-autopilot-flow"],
     autopilot: {

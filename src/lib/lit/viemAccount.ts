@@ -29,5 +29,5 @@ export async function getFlowAccount(session: UserSession) {
     throw new Error("Missing phone number for Flow wallet lookup");
   }
 
-  return getFlowWalletAccount(session.role, phoneNumber);
+  return await getFlowWalletAccount(session.role, phoneNumber);
 }

@@ -6,6 +6,9 @@ export type ExecutionMode = "vincent-live" | "chipotle-fallback" | "local-fallba
 export type SchedulerBackend = "flow-native-scheduled" | "evm-manual";
 export type WalletMode = "app-managed" | "delegated" | "linked-self-custody";
 export type GasMode = "sponsored" | "user-funded";
+export type DeFiStrategy = "conservative" | "balanced" | "growth";
+export type DeFiRiskLevel = "low" | "medium" | "high";
+export type DeFiActionKind = "earn" | "goal" | "rebalance";
 export type ExecutionLane =
   | "direct-flow"
   | "agent-assisted-flow"
@@ -18,6 +21,53 @@ export type ApprovalMode =
   | "guardian-autopilot";
 export type PolicyMode = "encrypted-live" | "degraded" | "not-applicable";
 export type FlowMedium = "FLOW";
+
+export interface DeFiPolicy {
+  enabled: boolean;
+  strategy: DeFiStrategy;
+  riskLevel: DeFiRiskLevel;
+  allowedProtocols: string[];
+  maxAllocationBps: number;
+  maxSlippageBps: number;
+  allowRecurringEarn: boolean;
+}
+
+export interface DeFiGoal {
+  id: string;
+  name: string;
+  targetAmount: string;
+  savedAmount: string;
+  status: "active" | "completed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeFiPortfolioAction {
+  kind: DeFiActionKind;
+  amount: string;
+  description: string;
+  strategy: DeFiStrategy;
+  goalName?: string;
+  flowTxHash?: string;
+  receiptCid?: string;
+  timestamp: string;
+}
+
+export interface DeFiPortfolioState {
+  familyId: string;
+  teenAddress: string;
+  policy: DeFiPolicy;
+  strategy: DeFiStrategy;
+  riskLevel: DeFiRiskLevel;
+  protocolLabel: string;
+  estimatedApr: number;
+  estimatedMonthlyYield: string;
+  totalValue: string;
+  balances: TeenBalances;
+  goals: DeFiGoal[];
+  recentActions: DeFiPortfolioAction[];
+  lastUpdatedAt: string;
+}
 
 // ═══ Policy Decisions ═══
 export type PolicyDecision = "GREEN" | "YELLOW" | "RED" | "BLOCKED";
@@ -158,7 +208,7 @@ export interface ApprovalRequest {
 // ═══ Receipt (stored on Storacha) ═══
 export interface Proof18Receipt {
   version: "v1";
-  type: ActionType | "approval" | "passport_update";
+  type: ActionType | "approval" | "passport_update" | "defi";
   familyId: string;
   teen: string;
   guardian: string;
@@ -213,6 +263,15 @@ export interface Proof18Receipt {
     preExplanation: string;
     postExplanation: string;
     celebration?: string;
+  };
+  defi?: {
+    actionKind: DeFiActionKind;
+    strategy: DeFiStrategy;
+    goalName?: string;
+    protocolLabel?: string;
+    riskLevel: DeFiRiskLevel;
+    estimatedApr?: number;
+    targetAmount?: string;
   };
   approvalRecord?: {
     guardianApproved: boolean;
@@ -334,6 +393,14 @@ export interface FlowResult {
     scheduledExecutionId?: string;
     scheduledExecutionExplorerUrl?: string;
     nextExecutionAt?: string;
+  };
+  defi?: {
+    actionKind: DeFiActionKind;
+    strategy: DeFiStrategy;
+    goalName?: string;
+    protocolLabel?: string;
+    riskLevel: DeFiRiskLevel;
+    portfolio?: DeFiPortfolioState;
   };
   calma?: {
     preExplanation: string;
@@ -475,6 +542,15 @@ export interface RuntimeCapabilities {
     nativeSchedulingConfigured: boolean;
     flowNativeFeaturesUsed: string[];
   };
+  defi?: {
+    enabled: boolean;
+    strategy: DeFiStrategy;
+    riskLevel: DeFiRiskLevel;
+    allowedProtocols: string[];
+    maxAllocationBps: number;
+    maxSlippageBps: number;
+    allowRecurringEarn: boolean;
+  };
   executionLanes?: ExecutionLane[];
   autopilot?: {
     guardianAutopilotEnabled: boolean;
@@ -499,13 +575,16 @@ export interface RuntimeCapabilities {
 
 // ═══ Clawrence Intent ═══
 export interface ClawrenceIntent {
-  type: ActionType | "question" | "status" | "unknown";
+  type: ActionType | DeFiActionKind | "portfolio" | "question" | "status" | "unknown";
   amount?: number;
   currency: string;
   description: string;
   isRecurring: boolean;
   interval?: "weekly" | "monthly";
   serviceName?: string;
+  goalName?: string;
+  strategy?: DeFiStrategy;
+  protocolLabel?: string;
   confidence: number;
 }
 

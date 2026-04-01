@@ -478,8 +478,6 @@ npm run pin:lit-action
 
 ## Hackathon Summary
 
-If you need a short explanation for the submission form, use this:
-
 > OnlyTeens is a guided crypto finance app for teens on Flow. Guardians set safe limits, Clawrence explains each action, Zama evaluates private household policy, Lit bounds delegated execution, ERC-8004 publishes the agent as a receipted identity, and Storacha stores proof for every important action.
 
 ## Why This Is Fresh Code

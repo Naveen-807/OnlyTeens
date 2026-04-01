@@ -32,6 +32,7 @@ interface AuthState {
   session: UserSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasHydrated: boolean;
   role: Role | null;
 
   // Family context (loaded at bootstrap)
@@ -60,6 +61,7 @@ interface AuthState {
     passport: PassportState | null;
     pendingApprovals: ApprovalRequest[];
   }) => void;
+  markHydrated: () => void;
   logout: () => void;
   clearSession: () => void;
   setLoading: (loading: boolean) => void;
@@ -72,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
       session: null,
       isAuthenticated: false,
       isLoading: false,
+      hasHydrated: false,
       role: null,
       family: null,
       balances: null,
@@ -91,6 +94,8 @@ export const useAuthStore = create<AuthState>()(
           pendingApprovals: data.pendingApprovals ?? [],
           isAuthenticated: true,
         }),
+
+      markHydrated: () => set({ hasHydrated: true }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 
@@ -195,6 +200,9 @@ export const useAuthStore = create<AuthState>()(
         family: state.family,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.markHydrated?.();
+      },
     }
   )
 );

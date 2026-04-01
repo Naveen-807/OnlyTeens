@@ -101,11 +101,11 @@ function ensureSessionShape(
   stored: StoredPhoneSession,
   flowAddress: string,
 ): StoredPhoneSession {
-  const pkpAddress =
-    stored.pkpAddress || stored.address || stored.flowAddress || "";
+  const canonicalFlowAddress = flowAddress || stored.flowAddress || stored.address || "";
+  const pkpAddress = stored.pkpAddress || stored.address || canonicalFlowAddress || "";
   return {
     ...stored,
-    flowAddress: stored.flowAddress || flowAddress,
+    flowAddress: canonicalFlowAddress,
     pkpAddress,
   };
 }
@@ -167,17 +167,19 @@ export function bindPhoneSessionToWallet(params: {
   const store = loadStore();
   const existing = store[key];
   const now = new Date().toISOString();
+  const flowWallet = getStoredFlowWallet(params.role, phoneNumber);
 
   store[key] = {
+    ...existing,
     phoneNumber,
     role: params.role,
     phoneKey: existing?.phoneKey || toHexSessionKey(params.role, phoneNumber),
-    flowAddress: params.walletAddress,
+    flowAddress: flowWallet.address || params.walletAddress,
     familyId: params.familyId,
     pkpPublicKey: params.pkpPublicKey,
     pkpTokenId: params.pkpTokenId,
     pkpAddress: params.pkpAddress,
-    chipotleWalletId: params.chipotleWalletId,
+    chipotleWalletId: params.chipotleWalletId ?? existing?.chipotleWalletId,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };

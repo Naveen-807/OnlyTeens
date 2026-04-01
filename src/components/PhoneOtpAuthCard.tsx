@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ValueTile } from "@/components/ui/value-tile";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -109,11 +110,15 @@ export function PhoneOtpAuthCard({
 
   const canVerify = challengeId && phoneNumber.trim() && code.trim().length === 6;
 
+  const flowExplorerUrl = verifiedSession?.address
+    ? `https://evm-testnet.flowscan.io/address/${verifiedSession.address}`
+    : null;
+
   return (
-    <Card className="w-full max-w-md bg-card/90 border-border/30 backdrop-blur-sm">
-      <CardHeader className="pb-4">
+    <Card className="w-full max-w-lg overflow-hidden bg-card/90 border-border/30 backdrop-blur-sm">
+      <CardHeader className="border-b border-border/30 bg-gradient-to-br from-primary/10 via-card to-card pb-5">
         <div className="flex items-center gap-3 mb-2">
-          <div className="rounded-lg bg-primary/20 p-2">
+          <div className="rounded-[1rem] border border-primary/20 bg-primary/12 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.05)]">
             <Phone className="h-5 w-5 text-primary" />
           </div>
           <Badge className="capitalize">{role}</Badge>
@@ -127,7 +132,7 @@ export function PhoneOtpAuthCard({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         {/* Phone Number Input */}
         <div className="space-y-2">
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -206,32 +211,39 @@ export function PhoneOtpAuthCard({
 
         {/* Verified Session Info */}
         {verifiedSession && (
-          <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-950/30 p-4">
-            <div className="flex items-center gap-2 text-emerald-400">
+          <div className="space-y-4 rounded-[1.35rem] border border-primary/20 bg-[linear-gradient(180deg,oklch(0.11_0.008_85_/_0.9),oklch(0.075_0.005_85_/_0.95))] p-4">
+            <div className="flex items-center gap-2 text-primary">
               <CheckCircle2 className="h-4 w-4" />
-              <span className="text-xs font-semibold uppercase tracking-wider">
+              <span className="text-xs font-semibold uppercase tracking-[0.24em]">
                 Session Mapping
               </span>
             </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-border/50 bg-card/45 px-4 py-3">
                 <span className="text-muted-foreground">Phone</span>
-                <span className="font-mono text-foreground">{verifiedSession.phoneNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Flow Wallet</span>
-                <span className="font-mono text-foreground truncate max-w-[180px]">
-                  {verifiedSession.address}
+                <span className="min-w-0 truncate font-mono text-foreground" title={verifiedSession.phoneNumber}>
+                  {verifiedSession.phoneNumber}
                 </span>
               </div>
-              {verifiedSession.pkpAddress && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Executor Wallet</span>
-                  <span className="font-mono text-foreground truncate max-w-[180px]">
-                    {verifiedSession.pkpAddress}
-                  </span>
-                </div>
-              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ValueTile
+                  label="Flow wallet"
+                  value={verifiedSession.address}
+                  href={flowExplorerUrl}
+                  copyable
+                  tone="gold"
+                  helperText="Verified Flow session wallet"
+                />
+                {verifiedSession.pkpAddress ? (
+                  <ValueTile
+                    label="Executor wallet"
+                    value={verifiedSession.pkpAddress}
+                    copyable
+                    tone="neutral"
+                    helperText="PKP-backed executor identity"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
         )}

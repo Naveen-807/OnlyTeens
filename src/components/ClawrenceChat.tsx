@@ -4,7 +4,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { Bot, Send, Sparkles } from "lucide-react";
 
 import type { ClawrenceIntent, UserSession } from "@/lib/types";
-import { fetchApi, fetchJson, extractApiError } from "@/lib/api/client";
+import { fetchJson, extractApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,12 +44,14 @@ export function ClawrenceChat({
   clawrencePublicKey: string;
   clawrencePkpTokenId: string;
 }) {
+  const cachedPassport = useAuthStore((state) => state.passport);
+  const cachedBalances = useAuthStore((state) => state.balances);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "clawrence",
       content:
-        'Hey! I\'m Calma, your financial guide.\n\nTry: "save ₹500 weekly" or "subscribe to Spotify for ₹119".',
+        'Hey! I\'m Calma, your financial guide.\n\nTry: "earn 50 FLOW for tuition" or "goal laptop 100 FLOW".',
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -97,6 +99,8 @@ export function ClawrenceChat({
             teenAddress,
             teenName,
             session,
+            cachedPassport,
+            cachedBalances,
           }),
         },
         "Calma could not respond",
@@ -129,12 +133,20 @@ export function ClawrenceChat({
   const confirmPreview = async () => {
     const intent = lastPreview?.intent;
     if (!intent) return;
-    if (intent.type !== "savings" && intent.type !== "subscription") return;
+    if (
+      intent.type !== "savings" &&
+      intent.type !== "subscription" &&
+      intent.type !== "earn" &&
+      intent.type !== "goal" &&
+      intent.type !== "rebalance"
+    ) {
+      return;
+    }
 
     setLoading(true);
     try {
       if (intent.type === "savings") {
-        const data = await fetchApi<{
+        const data = await fetchJson<{
           success: boolean;
           error?: string;
           calma?: { celebration?: string; postExplanation?: string };
@@ -166,8 +178,8 @@ export function ClawrenceChat({
           timestamp: new Date().toISOString(),
         });
         await useAuthStore.getState().refreshState();
-      } else {
-        const data = await fetchApi<{
+      } else if (intent.type === "subscription") {
+        const data = await fetchJson<{
           success: boolean;
           error?: string;
           requiresApproval?: boolean;
@@ -201,6 +213,50 @@ export function ClawrenceChat({
           timestamp: new Date().toISOString(),
         });
         await useAuthStore.getState().refreshState();
+      } else {
+        const data = await fetchJson<{
+          success: boolean;
+          error?: string;
+          calma?: { celebration?: string; postExplanation?: string };
+          clawrence?: { celebration?: string; postExplanation?: string };
+        }>(
+          "/api/defi",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session,
+              familyId,
+              teenAddress,
+              guardianAddress,
+              teenName,
+              amount: String(intent.amount || 0),
+              goalName: intent.goalName,
+              goalTarget: String(intent.amount || 0),
+              strategy: intent.strategy || "balanced",
+              protocolLabel: intent.protocolLabel || "Flow Savings Vault",
+              actionKind: intent.type,
+              isRecurring: Boolean(intent.isRecurring),
+              interval: intent.interval || "weekly",
+              clawrencePublicKey,
+              clawrencePkpTokenId,
+            }),
+          },
+          "DeFi plan failed",
+        );
+
+        push({
+          id: `result_${Date.now()}`,
+          role: "clawrence",
+          content:
+            data?.calma?.celebration ||
+            data?.calma?.postExplanation ||
+            data?.clawrence?.celebration ||
+            data?.clawrence?.postExplanation ||
+            "Your earn plan is active.",
+          timestamp: new Date().toISOString(),
+        });
+        await useAuthStore.getState().refreshState();
       }
     } catch (error: unknown) {
       push({
@@ -215,10 +271,10 @@ export function ClawrenceChat({
   };
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-12rem)] max-w-2xl flex-col rounded-2xl border border-border/30 bg-card/90 backdrop-blur-sm overflow-hidden">
+    <div className="mx-auto flex min-h-[calc(100dvh-16rem)] max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-border/30 bg-[linear-gradient(180deg,oklch(0.11_0.008_85_/_0.96),oklch(0.075_0.005_85_/_0.98))] backdrop-blur-sm">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-border/30 bg-gradient-to-r from-primary/10 via-card to-card p-4">
-        <div className="rounded-xl bg-primary/20 p-2.5 border border-primary/30">
+        <div className="rounded-[1rem] border border-primary/20 bg-primary/12 p-2.5 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.05)]">
           <Bot className="h-6 w-6 text-primary" />
         </div>
         <div>
@@ -232,7 +288,7 @@ export function ClawrenceChat({
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 min-h-0 p-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((msg) => (
             <div
@@ -241,12 +297,12 @@ export function ClawrenceChat({
             >
               <div
                 className={cn(
-                  "max-w-[85%] whitespace-pre-wrap rounded-2xl p-4 text-sm",
+                  "max-w-[min(85%,42rem)] min-w-0 whitespace-pre-wrap break-words rounded-2xl p-4 text-sm leading-6",
                   msg.role === "teen"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    ? "rounded-br-md border border-primary/20 bg-primary/12 text-foreground"
                     : msg.role === "system"
                       ? "bg-rose-950/60 border border-rose-500/30 text-rose-400"
-                      : "bg-secondary/80 border border-border/30 rounded-bl-md"
+                      : "rounded-bl-md border border-border/30 bg-card/70 text-foreground"
                 )}
               >
                 {msg.role === "clawrence" && (
@@ -296,13 +352,13 @@ export function ClawrenceChat({
       </ScrollArea>
 
       {/* Input */}
-      <div className="border-t border-border/30 bg-card/50 p-4">
+      <div className="border-t border-border/30 bg-card/55 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="flex gap-3">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-            placeholder="Save ₹500 weekly..."
+            placeholder="Save 500 FLOW weekly or earn 50 FLOW for tuition..."
             className="flex-1 bg-background/50"
             disabled={loading}
           />
@@ -316,7 +372,7 @@ export function ClawrenceChat({
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground text-center">
-          Try: "save 100 FLOW" or "subscribe to Netflix for 15 FLOW"
+          Try: "save 100 FLOW" or "earn 50 FLOW for tuition"
         </p>
       </div>
     </div>

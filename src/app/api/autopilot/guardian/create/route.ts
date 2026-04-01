@@ -8,8 +8,10 @@ import { getFlowAccount } from "@/lib/lit/viemAccount";
 import { getFamilyById, saveFamily } from "@/lib/onboarding/familyService";
 import { addReceipt, createStoredReceipt } from "@/lib/receipts/receiptStore";
 import { buildLaneMetadata, derivePolicyMode } from "@/lib/runtime/lanes";
+import { flowToPolicyUnits } from "@/lib/money";
 import { evaluateAction } from "@/lib/zama/policy";
 import type { FlowResult } from "@/lib/types";
+import { SUBSCRIPTION_RECIPIENT_ADDRESS } from "@/lib/constants";
 
 export async function POST(req: Request) {
   try {
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
     const zama = await evaluateAction({
       familyId: body.familyId,
       teenAddress: body.teenAddress,
-      amount: Number(body.amount),
+      amount: flowToPolicyUnits(body.amount),
       passportLevel: passport.level,
       isRecurring: true,
       requireEncrypted: process.env.PROOF18_LIVE_MODE === "true",
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
         body.teenAddress,
         parseEther(String(body.amount)),
         body.serviceName || body.label || "subscription",
-        body.recipientAddress,
+        body.recipientAddress || SUBSCRIPTION_RECIPIENT_ADDRESS,
       );
     } else {
       schedule = await createSavingsSchedule(

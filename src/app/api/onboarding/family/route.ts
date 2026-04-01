@@ -5,10 +5,12 @@ import { ensureFamilyChipotleProvision } from "@/lib/lit/chipotle";
 import {
   addTeenOnChain,
   createPassportOnChain,
+  findFamilyIdOnChain,
   registerFamilyOnChain,
   updateExecutorOnChain,
 } from "@/lib/flow/access";
 import { getFlowRuntimeProfile } from "@/lib/flow/runtimeProfile";
+import { getFlowWalletAccount } from "@/lib/flow/walletSession";
 import { fail, mapErrorToCode, ok } from "@/lib/api/response";
 import { bindPhoneSessionToWallet } from "@/lib/auth/phoneSession";
 import {
@@ -37,7 +39,16 @@ function nonZeroContractsConfigured() {
   );
 }
 
-function nextFamilyId(guardianAddress: string, teenAddress: string): string {
+async function nextFamilyId(guardianAddress: string, teenAddress: string): Promise<string> {
+  const existingOnChainFamilyId = await findFamilyIdOnChain({
+    guardianAddress: guardianAddress as `0x${string}`,
+    teenAddress: teenAddress as `0x${string}`,
+  });
+
+  if (existingOnChainFamilyId) {
+    return existingOnChainFamilyId;
+  }
+
   const all = loadFamilies();
   for (let nonce = 0; nonce < 1000; nonce += 1) {
     const candidate = generateFamilyId(guardianAddress, teenAddress, nonce);
@@ -303,9 +314,11 @@ export async function POST(req: NextRequest) {
         }
       } else {
         try {
+          const guardianAccount = await getFlowWalletAccount("guardian", guardianSession.phoneNumber || "");
           onchain.teenRegistration = await addTeenOnChain({
             familyId: toAddress(updatedFamily.familyId),
             teenAddress: toAddress(linkedTeen.teenAddress),
+            guardianAccount,
           });
           onchain.passportCreation = await createPassportOnChain({
             familyId: toAddress(updatedFamily.familyId),
@@ -383,7 +396,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const familyId = nextFamilyId(guardianSession.address, teenSession.address);
+    const familyId = await nextFamilyId(guardianSession.address, teenSession.address);
     const provision = await ensureFamilyChipotleProvision({
       familyId,
       guardianAddress: guardianSession.address,
@@ -399,13 +412,13 @@ export async function POST(req: NextRequest) {
     const family: FamilyRecord = {
       familyId,
       guardianPhoneNumber: guardianSession.phoneNumber,
-      guardianAddress: provision.guardianWallet.walletAddress,
-      guardianPkpPublicKey: provision.guardianWallet.publicKey,
-      guardianPkpTokenId: provision.guardianWallet.tokenId,
+      guardianAddress: guardianSession.address,
+      guardianPkpPublicKey: guardianSession.pkpPublicKey,
+      guardianPkpTokenId: guardianSession.pkpTokenId,
       teenPhoneNumber: teenSession.phoneNumber,
-      teenAddress: provision.teenWallet.walletAddress,
-      teenPkpPublicKey: provision.teenWallet.publicKey,
-      teenPkpTokenId: provision.teenWallet.tokenId,
+      teenAddress: teenSession.address,
+      teenPkpPublicKey: teenSession.pkpPublicKey,
+      teenPkpTokenId: teenSession.pkpTokenId,
       calmaAddress: provision.calmaWallet.walletAddress,
       calmaPkpPublicKey: provision.calmaWallet.publicKey,
       calmaPkpTokenId: provision.calmaWallet.tokenId,
@@ -462,7 +475,6 @@ export async function POST(req: NextRequest) {
           familyId: toAddress(family.familyId),
           guardianAddress: toAddress(family.guardianAddress),
           teenAddress: toAddress(family.teenAddress),
-          executorAddress: toAddress(family.calmaAddress || family.clawrenceAddress),
         });
         onchain.passportCreation = await createPassportOnChain({
           familyId: toAddress(family.familyId),

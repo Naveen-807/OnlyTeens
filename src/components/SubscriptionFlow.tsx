@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CreditCard, CheckCircle2, Clock, XCircle, Music, Tv, Gamepad2, ShoppingBag } from "lucide-react";
 
-import { fetchApi } from "@/lib/api/client";
+import { fetchJson } from "@/lib/api/client";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export function SubscriptionFlow({
     setResult(null);
     setSubmitError(null);
     try {
-      const data = await fetchApi<FlowResult>(
+      const data = await fetchJson<FlowResult>(
         "/api/subscription/request",
         {
           method: "POST",
@@ -87,6 +87,8 @@ export function SubscriptionFlow({
         if (!refreshResult.success) {
           setSubmitError(refreshResult.error || "Subscription updated, but the dashboard could not refresh.");
         }
+      } else if (!data.requiresApproval) {
+        setSubmitError(data.error || "Subscription request failed");
       }
     } catch (error: unknown) {
       setSubmitError(error instanceof Error ? error.message : "Subscription request failed");
@@ -142,7 +144,7 @@ export function SubscriptionFlow({
                   </div>
                   <div>
                     <p className="text-sm font-medium">{service.name}</p>
-                    <p className="text-xs text-muted-foreground">${service.amount}/mo</p>
+                    <p className="text-xs text-muted-foreground">{service.amount} FLOW/mo</p>
                   </div>
                 </button>
               ))}

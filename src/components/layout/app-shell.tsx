@@ -8,13 +8,13 @@ import {
   Bot,
   CreditCard,
   History,
-  Home,
   Inbox,
   LayoutDashboard,
   LogOut,
   PiggyBank,
   Shield,
   Sparkles,
+  TrendingUp,
   Users,
 } from 'lucide-react'
 
@@ -42,9 +42,10 @@ import { Button } from '@/components/ui/button'
 const teenNavItems = [
   { id: 'home', label: 'Dashboard', href: '/teen', icon: Sparkles },
   { id: 'save', label: 'Save', href: '/teen/save', icon: PiggyBank },
-  { id: 'subscribe', label: 'Subscribe', href: '/teen/subscribe', icon: CreditCard },
+  { id: 'defi', label: 'DeFi', href: '/teen/defi', icon: TrendingUp },
   { id: 'chat', label: 'Calma', href: '/teen/chat', icon: Bot },
   { id: 'passport', label: 'Passport', href: '/teen/passport', icon: Award },
+  { id: 'subscribe', label: 'Subscribe', href: '/teen/subscribe', icon: CreditCard },
   { id: 'activity', label: 'Activity', href: '/teen/activity', icon: History },
 ]
 
@@ -76,10 +77,10 @@ export function AppShell({ role, children, userName = 'User' }: AppShellProps) {
 
   return (
     <SidebarProvider>
-      <Sidebar variant="inset" className="border-sidebar-border/30">
-        <SidebarHeader className="border-b border-sidebar-border/30 p-4">
+      <Sidebar variant="inset" className="border-sidebar-border/30 bg-sidebar/95 backdrop-blur-xl">
+        <SidebarHeader className="border-b border-sidebar-border/30 bg-gradient-to-b from-sidebar/95 to-sidebar/80 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-primary/25 bg-primary/12 shadow-[inset_0_1px_0_oklch(1_0_0_/_0.05)]">
               <span className="text-lg font-bold text-gold-gradient">C</span>
             </div>
             <div>
@@ -141,11 +142,11 @@ export function AppShell({ role, children, userName = 'User' }: AppShellProps) {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-4 border-b border-border/30 bg-background/50 backdrop-blur-sm px-4 lg:px-6">
+      <SidebarInset className="min-w-0 bg-background">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/30 bg-background/82 px-4 backdrop-blur-xl lg:px-6">
           <SidebarTrigger className="-ml-2" />
           <Separator orientation="vertical" className="h-6 bg-border/50" />
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <h1 className="text-sm font-medium text-foreground">
               {navItems.find(item =>
                 pathname === item.href ||
@@ -154,7 +155,7 @@ export function AppShell({ role, children, userName = 'User' }: AppShellProps) {
             </h1>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
+        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 lg:px-6 lg:pt-6">
           {children}
         </main>
 
@@ -173,8 +174,8 @@ function MobileBottomNav({
   currentPath: string
 }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/30 bg-card/95 backdrop-blur-md md:hidden">
-      <div className="flex h-16 items-center justify-around px-2">
+    <nav className="fixed inset-x-0 bottom-0 z-50 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
+      <div className="mx-auto flex max-w-3xl items-stretch gap-1.5 rounded-[1.5rem] border border-border/40 bg-card/92 px-2 py-2 shadow-[0_24px_80px_oklch(0_0_0_/_0.45)] backdrop-blur-xl">
         {items.map((item) => {
           const isActive = currentPath === item.href ||
             (item.href !== '/teen' && item.href !== '/guardian' && currentPath.startsWith(item.href))
@@ -183,17 +184,17 @@ function MobileBottomNav({
               key={item.id}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors',
+                'flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-[1.1rem] px-2 py-2 text-center transition-all',
                 isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary/12 text-primary shadow-[inset_0_1px_0_oklch(1_0_0_/_0.05)]'
+                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
               )}
             >
               <item.icon className={cn(
-                "h-5 w-5",
+                "h-5 w-5 shrink-0",
                 isActive && "text-primary"
               )} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[10px] font-medium leading-none">{item.label}</span>
             </Link>
           )
         })}

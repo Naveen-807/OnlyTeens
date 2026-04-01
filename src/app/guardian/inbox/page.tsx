@@ -153,18 +153,23 @@ export default function GuardianInbox() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-semibold text-foreground">Approval Inbox</h2>
           {sortedRequests.length > 0 && (
-            <Badge className="border-rose-500/30 bg-rose-500/20 text-rose-400">
+            <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-400">
               {sortedRequests.length}
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => void fetchRequests()}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void fetchRequests()}
+          className="w-full border-border/30 bg-card/70 sm:w-auto"
+        >
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -174,8 +179,8 @@ export default function GuardianInbox() {
         <Card className={cn(
           "border",
           status.kind === "success"
-            ? "border-emerald-500/30 bg-emerald-950/30"
-            : "border-rose-500/30 bg-rose-950/30"
+            ? "border-emerald-500/30 bg-emerald-950/25"
+            : "border-rose-500/30 bg-rose-950/25"
         )}>
           <CardContent className="p-4 flex items-center gap-3">
             {status.kind === "success" ? (
@@ -214,7 +219,7 @@ export default function GuardianInbox() {
           ))}
         </div>
       ) : sortedRequests.length === 0 ? (
-        <Card className="bg-card/60">
+        <Card className="border-border/30 bg-card/80">
           <CardContent className="py-12 text-center">
             <div className="text-5xl mb-4">✨</div>
             <p className="text-lg font-medium text-foreground mb-1">All caught up!</p>
@@ -226,14 +231,14 @@ export default function GuardianInbox() {
       ) : (
         <div className="space-y-4">
           {sortedRequests.map((req) => (
-            <Card key={req.id} className="overflow-hidden">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base">
+            <Card key={req.id} className="overflow-hidden border-border/30 bg-card/85">
+              <CardHeader className="border-b border-border/20 bg-gradient-to-br from-primary/10 via-card to-card pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base sm:text-lg">
                       {req.teenName} wants to {req.actionType}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">{req.description}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{req.description}</p>
                   </div>
                   <Badge
                     className={cn(
@@ -252,16 +257,16 @@ export default function GuardianInbox() {
 
               <CardContent className="space-y-4">
                 {/* Calma Explanation */}
-                <div className="rounded-lg bg-primary/10 border border-primary/20 p-4">
-                  <p className="text-xs uppercase tracking-wider text-primary/70 mb-2">
+                <div className="rounded-[1.2rem] border border-primary/15 bg-primary/8 p-4">
+                  <p className="mb-2 text-xs uppercase tracking-[0.24em] text-primary/70">
                     🤖 Calma says
                   </p>
                   <p className="text-sm text-foreground">{req.clawrenceGuardianExplanation}</p>
                 </div>
 
                 {/* Meta Info */}
-                <div className="flex justify-between text-sm">
-                  <span className="text-gold-gradient font-medium">
+                <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium text-gold-gradient">
                     {req.currency}{req.amount}
                     {req.isRecurring ? "/month" : ""}
                   </span>
@@ -276,7 +281,7 @@ export default function GuardianInbox() {
 
                 {/* Note Input */}
                 <div className="space-y-2">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
                     Guardian note
                   </label>
                   <textarea
@@ -284,17 +289,17 @@ export default function GuardianInbox() {
                     onChange={(e) =>
                       setNotes((prev) => ({ ...prev, [req.id]: e.target.value }))
                     }
-                    className="min-h-20 w-full rounded-lg border border-border/30 bg-background/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+                    className="min-h-24 w-full rounded-[1.15rem] border border-border/30 bg-background/55 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
                     placeholder="Explain why you approve or reject this request..."
                   />
                 </div>
 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Button
                     onClick={() => void handleApprove(req.id)}
                     disabled={processing === req.id}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="w-full"
                   >
                     {processing === req.id ? "Processing..." : "Approve"}
                   </Button>
@@ -302,6 +307,7 @@ export default function GuardianInbox() {
                     variant="outline"
                     onClick={() => void handleReject(req.id)}
                     disabled={processing === req.id}
+                    className="w-full border-border/30 bg-card/60"
                   >
                     Decline
                   </Button>

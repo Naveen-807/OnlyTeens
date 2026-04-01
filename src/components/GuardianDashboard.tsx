@@ -14,7 +14,7 @@ const quickLinks = [
     icon: Inbox,
     label: "Approval Inbox",
     description: "Review pending requests before delegated execution continues",
-    color: "text-amber-400",
+    color: "text-primary",
   },
   {
     href: "/guardian/setup",
@@ -28,7 +28,7 @@ const quickLinks = [
     icon: Users,
     label: "Family",
     description: "Manage family members, roles, and delegated authority",
-    color: "text-violet-400",
+    color: "text-primary",
   },
   {
     href: "/guardian/activity",
@@ -43,21 +43,23 @@ export function GuardianDashboard() {
   const { family, pendingApprovals } = useAuthStore();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Family Control Center</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Family Control Center</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
           Manage private policy, approvals, and delegated execution
-        </p>
+          </p>
+        </div>
       </div>
 
       {/* Overview Card */}
-      <Card className="bg-gradient-to-br from-primary/15 via-card to-accent/10 border-primary/20">
+      <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(180deg,oklch(0.11_0.008_85_/_0.95),oklch(0.08_0.006_85_/_0.98))]">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              <p className="mb-1 text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 Family Status
               </p>
               <p className="text-lg font-semibold text-foreground">
@@ -65,7 +67,7 @@ export function GuardianDashboard() {
               </p>
             </div>
             {pendingApprovals && pendingApprovals.length > 0 && (
-              <Badge className="border-amber-500/30 bg-amber-500/20 text-amber-400">
+              <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-400">
                 {pendingApprovals.length} pending
               </Badge>
             )}
@@ -77,11 +79,11 @@ export function GuardianDashboard() {
       <div className="grid gap-3 sm:grid-cols-2">
         {quickLinks.map((link) => (
           <Link key={link.href} href={link.href}>
-            <Card className="h-full transition-all hover:border-border/50 hover:bg-card/90">
+            <Card className="h-full border-border/30 bg-card/80 transition-all hover:border-primary/30 hover:bg-card/95">
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
                   <div className={cn(
-                    "rounded-lg bg-secondary/50 p-2.5",
+                    "rounded-[1rem] border border-primary/15 bg-primary/10 p-2.5",
                     link.color
                   )}>
                     <link.icon className="h-5 w-5" />
@@ -107,7 +109,7 @@ export function GuardianDashboard() {
       </div>
 
       {/* Help Card */}
-      <Card className="bg-card/60">
+      <Card className="border-border/30 bg-card/75">
         <CardContent className="p-5">
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Need help?</span>{" "}

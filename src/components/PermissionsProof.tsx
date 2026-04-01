@@ -73,7 +73,7 @@ export function PermissionsProof({
         : "Vincent mode is detected at runtime before execution";
 
   return (
-    <Card className={cn("overflow-hidden p-5 sm:p-6", className)}>
+    <Card className={cn("overflow-hidden border-primary/15 bg-[linear-gradient(180deg,oklch(0.11_0.008_85_/_0.96),oklch(0.075_0.005_85_/_0.98))] p-5 sm:p-6", className)}>
       <div className="flex flex-col gap-5">
         <div>
           <Badge>Consumer DeFi on Flow</Badge>
@@ -87,19 +87,19 @@ export function PermissionsProof({
           </p>
         </div>
 
-        <div className="rounded-[1.6rem] border border-primary/25 bg-[linear-gradient(180deg,oklch(0.13_0.012_85),oklch(0.08_0.006_85))] p-4 sm:p-5">
+        <div className="rounded-[1.6rem] border border-primary/20 bg-[linear-gradient(180deg,oklch(0.13_0.012_85),oklch(0.08_0.006_85))] p-4 sm:p-5">
           <p className="flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-primary/80">
             <Shield className="h-3.5 w-3.5" />
             Safety Layers
           </p>
           <div className="mt-4 flex flex-col gap-3">
-            <div className="flex items-center gap-3 rounded-[1.2rem] border border-violet-500/25 bg-violet-950/30 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/14 text-violet-300 font-bold">
+            <div className="flex items-center gap-3 rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 font-bold text-primary">
                 1
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-violet-200">Zama FHE Policy</span>
+                  <span className="font-medium text-foreground">Zama FHE Policy</span>
                   <Badge className={cn("text-xs", getDecisionBadgeColor(proof?.zamaDecision))}>
                     {proof?.zamaDecision || "PENDING"}
                   </Badge>
@@ -109,19 +109,19 @@ export function PermissionsProof({
                     </Badge>
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-xs text-violet-200/65">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Encrypted policy decides if action is within family rules
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-[1.2rem] border border-amber-500/25 bg-amber-950/25 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/20 bg-amber-500/14 text-amber-300 font-bold">
+            <div className="flex items-center gap-3 rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 font-bold text-primary">
                 2
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-amber-100">Vincent Guardrails</span>
+                  <span className="font-medium text-foreground">Vincent Guardrails</span>
                   <Badge className={cn("text-xs", getDecisionBadgeColor(proof?.guardrailDecision))}>
                     {proof?.guardrailDecision || "PENDING"}
                   </Badge>
@@ -129,24 +129,24 @@ export function PermissionsProof({
                     {vincentLabel}
                   </Badge>
                 </div>
-                <p className="mt-0.5 text-xs text-amber-100/65">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {vincentCopy}
                 </p>
                 {proof?.guardrailReason ? (
-                  <p className="mt-1.5 text-xs text-amber-100/75">
+                  <p className="mt-1.5 text-xs text-foreground/80">
                     {proof.guardrailReason}
                   </p>
                 ) : null}
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-[1.2rem] border border-blue-500/25 bg-blue-950/25 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-400/20 bg-blue-500/14 text-blue-300 font-bold">
+            <div className="flex items-center gap-3 rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 font-bold text-primary">
                 3
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-blue-100">Lit Execution Boundary</span>
+                  <span className="font-medium text-foreground">Lit Execution Boundary</span>
                   <Badge className={cn(
                     "text-xs",
                     proof?.litAuthorized
@@ -161,11 +161,11 @@ export function PermissionsProof({
                     </Badge>
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-xs text-blue-100/65">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Immutable signing policy controls when the delegated executor can act
                 </p>
                 {proof?.litPermissionNote ? (
-                  <p className="mt-1.5 text-xs text-blue-100/75">
+                  <p className="mt-1.5 text-xs text-foreground/80">
                     {proof.litPermissionNote}
                   </p>
                 ) : null}
@@ -180,48 +180,48 @@ export function PermissionsProof({
             Delegated role separation
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.2rem] border border-emerald-500/25 bg-emerald-950/24 p-4">
+            <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wider text-emerald-200 font-medium">
+                <p className="text-xs font-medium uppercase tracking-wider text-foreground">
                   Guardian authority
                 </p>
                 <Badge className="border-emerald-500/30 bg-emerald-950/60 text-emerald-400 text-[10px]">
                   SignAnything
                 </Badge>
               </div>
-              <p className="mt-2 font-mono text-xs text-emerald-100/80">{shorten(guardianPkpAddress)}</p>
-              <p className="mt-1 text-[10px] text-emerald-100/58">Full signing authority</p>
+              <p className="mt-2 font-mono text-xs text-foreground/85">{shorten(guardianPkpAddress)}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Full signing authority</p>
             </div>
-            <div className="rounded-[1.2rem] border border-blue-500/25 bg-blue-950/24 p-4">
+            <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wider text-blue-100 font-medium">
+                <p className="text-xs font-medium uppercase tracking-wider text-foreground">
                   Teen session
                 </p>
                 <Badge className="border-blue-500/30 bg-blue-950/60 text-blue-400 text-[10px]">
                   PersonalSign
                 </Badge>
               </div>
-              <p className="mt-2 font-mono text-xs text-blue-100/80">{shorten(teenPkpAddress)}</p>
-              <p className="mt-1 text-[10px] text-blue-100/58">Limited to messages</p>
+              <p className="mt-2 font-mono text-xs text-foreground/85">{shorten(teenPkpAddress)}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Limited to messages</p>
             </div>
-            <div className="rounded-[1.2rem] border border-violet-500/25 bg-violet-950/24 p-4">
+            <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-wider text-violet-100 font-medium">
+                <p className="text-xs font-medium uppercase tracking-wider text-foreground">
                   Calma executor
                 </p>
                 <Badge className="border-violet-500/30 bg-violet-950/60 text-violet-400 text-[10px]">
                   Lit Action
                 </Badge>
               </div>
-              <p className="mt-2 font-mono text-xs text-violet-100/80">{shorten(clawrencePkpAddress)}</p>
-              <p className="mt-1 text-[10px] text-violet-100/58">Bound to CID: {shorten(safeExecutorCid)}</p>
+              <p className="mt-2 font-mono text-xs text-foreground/85">{shorten(clawrencePkpAddress)}</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Bound to CID: {shorten(safeExecutorCid)}</p>
             </div>
           </div>
         </div>
 
         {capabilities ? (
           <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
                 Runtime capability truth
               </p>
@@ -275,7 +275,7 @@ export function PermissionsProof({
               </div>
             </div>
 
-            <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+            <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
                 Chain responsibilities
               </p>
@@ -323,7 +323,7 @@ export function PermissionsProof({
         ) : null}
 
         {capabilities?.lit.familyProof.available ? (
-          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+          <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Selected family proof
             </p>
@@ -366,7 +366,7 @@ export function PermissionsProof({
         ) : null}
 
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+          <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Zama evaluation tx
             </p>
@@ -378,7 +378,7 @@ export function PermissionsProof({
               <p className="mt-2 text-sm text-muted-foreground">No evaluation yet.</p>
             )}
           </div>
-          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+          <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Flow execution
             </p>
@@ -402,7 +402,7 @@ export function PermissionsProof({
               <p className="mt-2 text-sm text-muted-foreground">No transaction yet.</p>
             )}
           </div>
-          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+          <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
               Evidence CID
             </p>
@@ -429,7 +429,7 @@ export function PermissionsProof({
         </div>
 
         {permittedScopes.length > 0 && (
-          <div className="rounded-[1.2rem] border border-border/55 bg-background/24 p-4">
+          <div className="rounded-[1.2rem] border border-border/55 bg-card/55 p-4">
             <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
               <Zap className="h-3.5 w-3.5" />
               Permitted scopes

@@ -111,7 +111,7 @@ export function GuardianPolicySetup({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Max per single action</label>
-              <span className="font-mono font-bold text-primary">₹{singleCap}</span>
+              <span className="font-mono font-bold text-primary">{singleCap} FLOW</span>
             </div>
             <Slider
               value={[singleCap]}
@@ -130,7 +130,7 @@ export function GuardianPolicySetup({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Max monthly recurring total</label>
-              <span className="font-mono font-bold text-primary">₹{recurringCap}</span>
+              <span className="font-mono font-bold text-primary">{recurringCap} FLOW</span>
             </div>
             <Slider
               value={[recurringCap]}

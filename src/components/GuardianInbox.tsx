@@ -32,8 +32,8 @@ export function GuardianInbox({
         <div className="rounded-lg bg-gray-50 p-3 text-sm">
           <p className="mb-1 font-medium text-gray-600">🔓 Your Family Limits</p>
           <div className="flex gap-4">
-            <span>Single: ₹{decryptedThresholds.singleCap}</span>
-            <span>Monthly recurring: ₹{decryptedThresholds.recurringCap}</span>
+            <span>Single: {decryptedThresholds.singleCap} FLOW</span>
+            <span>Monthly recurring: {decryptedThresholds.recurringCap} FLOW</span>
           </div>
           <p className="mt-1 text-xs text-gray-400">
             Decrypted for you only — your teen sees only the classification
@@ -72,8 +72,7 @@ export function GuardianInbox({
 
             <div className="flex justify-between text-sm text-gray-500">
               <span>
-                {req.currency}
-                {req.amount}
+                {req.currency} {req.amount}
                 {req.isRecurring ? "/month" : ""}
               </span>
               <span>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PiggyBank, CheckCircle2, Clock, XCircle, ExternalLink, Receipt } from "lucide-react";
 
-import { fetchApi, hasRenderableLink } from "@/lib/api/client";
+import { fetchJson, hasRenderableLink } from "@/lib/api/client";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ export function SavingsFlow({
     setResult(null);
     setSubmitError(null);
     try {
-      const data = await fetchApi<FlowResult>(
+      const data = await fetchJson<FlowResult>(
         "/api/savings/execute",
         {
           method: "POST",
@@ -84,6 +84,8 @@ export function SavingsFlow({
         if (!refreshResult.success) {
           setSubmitError(refreshResult.error || "Saved, but the dashboard could not refresh.");
         }
+      } else if (!data.requiresApproval) {
+        setSubmitError(data.error || "Savings request failed");
       }
     } catch (error: unknown) {
       setSubmitError(error instanceof Error ? error.message : "Savings request failed");

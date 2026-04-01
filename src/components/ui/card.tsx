@@ -10,7 +10,7 @@ function Card({
     <div
       data-slot="card"
       className={cn(
-        "premium-panel rounded-[1.5rem] text-card-foreground",
+        "premium-panel min-w-0 rounded-[1.5rem] text-card-foreground",
         className,
       )}
       {...props}

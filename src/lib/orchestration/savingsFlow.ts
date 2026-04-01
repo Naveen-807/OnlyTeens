@@ -2,8 +2,10 @@ import "server-only";
 
 import { createSavingsSchedule } from "@/lib/flow/scheduler";
 import { parseTransactionEvents } from "@/lib/flow/events";
+import { getFamilyById } from "@/lib/onboarding/familyService";
 import { getPassport, recordAction } from "@/lib/flow/passport";
 import { depositSavings } from "@/lib/flow/vault";
+import { recordDefiAction } from "@/lib/defi/portfolio";
 import { preActionExplanation, postDecisionExplanation, celebrationMessage } from "@/lib/clawrence/engine";
 import { executeSafeSigning } from "@/lib/lit/executor";
 import { getClawrenceAccount } from "@/lib/lit/executorSession";
@@ -16,11 +18,31 @@ import {
   storeReceipt,
 } from "@/lib/storacha/receipts";
 import { addReceipt, receiptFromFlowResult } from "@/lib/receipts/receiptStore";
-import { flowToWei, inrToPaise } from "@/lib/money";
+import { flowToPolicyUnits, flowToWei } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { buildLaneMetadata } from "@/lib/runtime/lanes";
 import type { FlowResult, UserSession } from "@/lib/types";
 import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+
+function resolveTeenAddress(
+  familyId: `0x${string}`,
+  teenAddress: `0x${string}`,
+): `0x${string}` {
+  const family = getFamilyById(familyId);
+  if (!family) {
+    return teenAddress;
+  }
+
+  const normalizedTeenAddress = teenAddress.toLowerCase();
+  const selectedTeen =
+    family.teenAddress.toLowerCase() === normalizedTeenAddress
+      ? null
+      : family.linkedTeens?.find(
+          (teen) => teen.active && teen.teenAddress.toLowerCase() === normalizedTeenAddress,
+        ) || null;
+
+  return (selectedTeen?.teenAddress || family.teenAddress) as `0x${string}`;
+}
 
 export async function executeSavingsFlow(params: {
   session: UserSession;
@@ -33,6 +55,14 @@ export async function executeSavingsFlow(params: {
   interval: "weekly" | "monthly";
   clawrencePublicKey: string;
   clawrencePkpTokenId: string;
+  defi?: {
+    actionKind: "earn" | "goal" | "rebalance";
+    strategy: "conservative" | "balanced" | "growth";
+    goalName?: string;
+    goalTarget?: string;
+    protocolLabel?: string;
+    riskLevel: "low" | "medium" | "high";
+  };
 }): Promise<FlowResult> {
   try {
     assertContractConfigForDemo();
@@ -42,14 +72,22 @@ export async function executeSavingsFlow(params: {
       approvalMode: "none",
       policyMode: "encrypted-live",
     });
-    const passportBefore = await getPassport(params.familyId, params.teenAddress);
+    const teenAddress = resolveTeenAddress(params.familyId, params.teenAddress);
+    const passportBefore = await getPassport(params.familyId, teenAddress);
+    const isDefiPlan = Boolean(params.defi);
+    const actionLabel = isDefiPlan ? params.defi?.actionKind || "earn" : "save";
+    const requestDescription = isDefiPlan
+      ? params.defi?.goalName
+        ? `${params.defi.actionKind} ${params.amount} FLOW toward ${params.defi.goalName}`
+        : `${params.defi?.actionKind || "earn"} ${params.amount} FLOW with a ${params.defi?.strategy || "balanced"} plan`
+      : `Save ${params.amount} FLOW ${params.isRecurring ? params.interval : "once"}`;
 
     const preExplanation = await preActionExplanation({
       teenName: params.teenName,
-      action: "save",
-      description: `Save ${params.amount} FLOW ${params.isRecurring ? params.interval : "once"}`,
+      action: actionLabel,
+      description: requestDescription,
       amount: Number(params.amount),
-      currency: "₹",
+      currency: "FLOW",
       isRecurring: params.isRecurring,
       passportLevel: passportBefore.level,
       passportStreak: passportBefore.weeklyStreak,
@@ -57,17 +95,17 @@ export async function executeSavingsFlow(params: {
 
     const { session: clawrenceSession, account: clawrenceAccount } = await getClawrenceAccount(
       params.familyId,
-      params.teenAddress,
+      teenAddress,
     );
     const executionContext = await getClawrenceExecutionContext(
       params.familyId,
-      params.teenAddress,
+      teenAddress,
     );
 
     const policyResult = await evaluateAction({
       familyId: params.familyId,
-      teenAddress: params.teenAddress,
-      amount: inrToPaise(params.amount),
+      teenAddress,
+      amount: flowToPolicyUnits(params.amount),
       passportLevel: passportBefore.level,
       isRecurring: params.isRecurring,
       account: clawrenceAccount,
@@ -78,10 +116,10 @@ export async function executeSavingsFlow(params: {
 
     const postExplanation = await postDecisionExplanation({
       teenName: params.teenName,
-      action: "savings",
-      description: `Save ${params.amount} FLOW`,
+      action: isDefiPlan ? params.defi?.actionKind || "earn" : "savings",
+      description: requestDescription,
       amount: Number(params.amount),
-      currency: "₹",
+      currency: "FLOW",
       decision,
       passportLevel: passportBefore.level,
     });
@@ -105,7 +143,7 @@ export async function executeSavingsFlow(params: {
         ...lane,
         guardrail: {
           decision: "BLOCK",
-          reason: guardrails.reasons[0],
+            reason: guardrails.reasons?.[0] || "Guardian review required",
           source: guardrails.provider,
         },
         guardrails,
@@ -123,7 +161,7 @@ export async function executeSavingsFlow(params: {
       guardianApproved: false,
       amount: params.amount,
       familyId: params.familyId,
-      teenAddress: params.teenAddress,
+      teenAddress,
       txData: new Uint8Array([]),
       clawrencePublicKey: clawrenceSession.pkpPublicKey || params.clawrencePublicKey,
       session: params.session,
@@ -172,7 +210,7 @@ export async function executeSavingsFlow(params: {
     const flowTx = await depositSavings(
       clawrenceAccount,
       params.familyId,
-      params.teenAddress,
+      teenAddress,
       params.amount,
     );
 
@@ -195,7 +233,7 @@ export async function executeSavingsFlow(params: {
       const createdSchedule = await createSavingsSchedule(
         clawrenceAccount,
         params.familyId,
-        params.teenAddress,
+        teenAddress,
         amountWei,
         `auto-save-${params.interval}`,
         params.interval,
@@ -208,20 +246,21 @@ export async function executeSavingsFlow(params: {
     await recordAction(
       clawrenceAccount,
       params.familyId,
-      params.teenAddress,
+      teenAddress,
       "savings",
       true,
     );
 
-    const passportAfter = await getPassport(params.familyId, params.teenAddress);
+    const passportAfter = await getPassport(params.familyId, teenAddress);
     const leveledUp = passportAfter.level > passportBefore.level;
 
     const receipt = buildSavingsReceipt({
       familyId: params.familyId,
-      teen: params.teenAddress,
+      teen: teenAddress,
       guardian: params.guardianAddress,
       amount: params.amount,
       decision,
+      receiptType: isDefiPlan ? "defi" : "savings",
       isRecurring: params.isRecurring,
       interval: params.interval,
       flowTxHash: flowTx.txHash,
@@ -239,9 +278,35 @@ export async function executeSavingsFlow(params: {
       scheduledExecutionExplorerUrl: scheduleResult?.scheduledExecutionExplorerUrl,
       nextExecutionAt: scheduleResult?.nextExecutionAt,
       zamaTxHash: policyResult.txHash || undefined,
+      defi: params.defi
+        ? {
+            actionKind: params.defi.actionKind,
+            strategy: params.defi.strategy,
+            goalName: params.defi.goalName,
+            protocolLabel: params.defi.protocolLabel,
+            riskLevel: params.defi.riskLevel,
+            estimatedApr: undefined,
+            targetAmount: params.defi.goalTarget,
+          }
+        : undefined,
     });
 
     const storachaReceipt = await storeReceipt(receipt);
+
+    let defiPortfolio: Awaited<ReturnType<typeof recordDefiAction>> | undefined;
+    if (params.defi) {
+      defiPortfolio = await recordDefiAction({
+        familyId: params.familyId,
+        teenAddress,
+        actionKind: params.defi.actionKind,
+        amount: params.amount,
+        strategy: params.defi.strategy,
+        goalName: params.defi.goalName,
+        goalTarget: params.defi.goalTarget,
+        flowTxHash: flowTx.txHash,
+        receiptCid: storachaReceipt.cid,
+      });
+    }
 
     const localReceipt = receiptFromFlowResult(
       {
@@ -268,13 +333,23 @@ export async function executeSavingsFlow(params: {
         storacha: { receiptCid: storachaReceipt.cid, receiptUrl: storachaReceipt.url },
         passport: { newLevel: passportAfter.level, leveledUp },
         schedule: scheduleResult,
+        defi: params.defi
+          ? {
+              actionKind: params.defi.actionKind,
+              strategy: params.defi.strategy,
+              goalName: params.defi.goalName,
+              protocolLabel: params.defi.protocolLabel,
+              riskLevel: params.defi.riskLevel,
+              portfolio: defiPortfolio,
+            }
+          : undefined,
         clawrence: { preExplanation },
       },
       {
         familyId: params.familyId,
-        teenAddress: params.teenAddress,
-        type: "savings",
-        description: `Save ${params.amount} FLOW ${params.isRecurring ? params.interval : "once"}`,
+        teenAddress,
+        type: isDefiPlan ? "defi" : "savings",
+        description: requestDescription,
         amount: params.amount,
       },
     );
@@ -284,7 +359,7 @@ export async function executeSavingsFlow(params: {
     if (leveledUp) {
       passportCid = await storePassportSnapshot({
         familyId: params.familyId,
-        teen: params.teenAddress,
+        teen: teenAddress,
         oldLevel: passportBefore.level,
         newLevel: passportAfter.level,
         triggeringAction: "Savings deposit",
@@ -294,9 +369,9 @@ export async function executeSavingsFlow(params: {
 
     const celebration = await celebrationMessage({
       teenName: params.teenName,
-      action: "savings",
+      action: isDefiPlan ? params.defi?.actionKind || "earn" : "savings",
       amount: Number(params.amount),
-      currency: "₹",
+      currency: "FLOW",
       leveledUp,
       oldLevel: passportBefore.level,
       newLevel: passportAfter.level,
@@ -304,12 +379,24 @@ export async function executeSavingsFlow(params: {
       receiptCid: storachaReceipt.cid,
     });
 
+    const defiResult =
+      params.defi && defiPortfolio
+        ? {
+            actionKind: params.defi.actionKind,
+            strategy: params.defi.strategy,
+            goalName: params.defi.goalName,
+            protocolLabel: params.defi.protocolLabel,
+            riskLevel: params.defi.riskLevel,
+            portfolio: defiPortfolio,
+          }
+        : undefined;
+
     return {
       success: true,
-        decision,
-        requiresApproval: false,
-        ...lane,
-        flow: {
+      decision,
+      requiresApproval: false,
+      ...lane,
+      flow: {
         txHash: flowTx.txHash,
         explorerUrl: flowTx.explorerUrl,
         events: parsedEvents.events,
@@ -339,14 +426,14 @@ export async function executeSavingsFlow(params: {
       },
       guardrails,
       vincent: executionContext.vincent,
-        zama: {
-          decision,
-          contractAddress: CONTRACTS.policy,
-          evaluationTxHash: policyResult.txHash || "",
-          source: policyResult.source,
-          guardianView: "Guardian can inspect the encrypted decision on Sepolia.",
-          teenView: "Policy passed confidential review.",
-        },
+      zama: {
+        decision,
+        contractAddress: CONTRACTS.policy,
+        evaluationTxHash: policyResult.txHash || "",
+        source: policyResult.source,
+        guardianView: "Guardian can inspect the encrypted decision on Sepolia.",
+        teenView: "Policy passed confidential review.",
+      },
       storacha: {
         receiptCid: storachaReceipt.cid,
         receiptUrl: storachaReceipt.url,
@@ -359,6 +446,7 @@ export async function executeSavingsFlow(params: {
         leveledUp,
       },
       schedule: scheduleResult,
+      defi: defiResult,
       clawrence: {
         preExplanation,
         postExplanation,

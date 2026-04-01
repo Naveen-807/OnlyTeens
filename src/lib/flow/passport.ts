@@ -4,18 +4,30 @@ import { CONTRACTS, PASSPORT_ABI } from "@/lib/constants";
 import { flowPublicClient, flowWalletClient } from "@/lib/flow/clients";
 import { PASSPORT_LEVELS, type PassportState } from "@/lib/types";
 
+async function waitForTransaction(hash: `0x${string}`) {
+  const receipt = await flowPublicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status === "reverted") {
+    throw new Error(`Transaction reverted: ${hash}`);
+  }
+  return receipt;
+}
+
 export async function createPassport(
   account: any,
   familyId: `0x${string}`,
   teenAddress: `0x${string}`,
 ): Promise<string> {
-  return await flowWalletClient.writeContract({
+  const hash = await flowWalletClient.writeContract({
     account,
     address: CONTRACTS.passport,
     abi: PASSPORT_ABI,
     functionName: "createPassport",
     args: [familyId, teenAddress],
   });
+
+  await waitForTransaction(hash);
+
+  return hash;
 }
 
 export async function recordAction(
@@ -34,6 +46,8 @@ export async function recordAction(
     functionName: "recordAction",
     args: [familyId, teenAddress, actionType, approved],
   });
+
+  await waitForTransaction(hash);
 
   const after = await getPassport(familyId, teenAddress);
 

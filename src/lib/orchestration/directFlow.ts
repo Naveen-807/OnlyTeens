@@ -2,8 +2,8 @@ import "server-only";
 
 import { parseEther } from "viem";
 
-import { CONTRACTS } from "@/lib/constants";
-import { flowWalletClient } from "@/lib/flow/clients";
+import { CONTRACTS, SUBSCRIPTION_RECIPIENT_ADDRESS } from "@/lib/constants";
+import { flowWalletClient, getServiceAccount } from "@/lib/flow/clients";
 import { parseTransactionEvents } from "@/lib/flow/events";
 import { getPassport, recordAction } from "@/lib/flow/passport";
 import { createSavingsSchedule, createSubscriptionSchedule, pauseSchedule } from "@/lib/flow/scheduler";
@@ -74,7 +74,9 @@ export async function executeDirectSavingsFlow(params: {
     throw new Error("DIRECT_FLOW_GUARDIAN_REQUIRED:Only guardians can withdraw savings");
   }
 
-  const account = await getFlowAccount(params.session);
+  const serviceAccount = getServiceAccount();
+  const guardianAccount = operation === "withdraw" ? await getFlowAccount(params.session) : serviceAccount;
+  const executionAccount = operation === "withdraw" ? guardianAccount : serviceAccount;
   const lane = buildLaneMetadata({
     session: params.session,
     executionLane: "direct-flow",
@@ -84,13 +86,13 @@ export async function executeDirectSavingsFlow(params: {
   const passportBefore = await getPassport(params.familyId, params.teenAddress);
   const tx =
     operation === "withdraw"
-      ? await withdrawSavings(account, params.familyId, params.teenAddress, params.amount)
-      : await depositSavings(account, params.familyId, params.teenAddress, params.amount);
+      ? await withdrawSavings(guardianAccount, params.familyId, params.teenAddress, params.amount)
+      : await depositSavings(serviceAccount, params.familyId, params.teenAddress, params.amount);
 
   const schedule =
     operation === "deposit" && params.isRecurring
       ? await createSavingsSchedule(
-          account,
+          serviceAccount,
           params.familyId,
           params.teenAddress,
           parseEther(params.amount),
@@ -100,12 +102,12 @@ export async function executeDirectSavingsFlow(params: {
       : undefined;
 
   const parsed = await parseTransactionEvents(tx.txHash as `0x${string}`);
-  await recordAction(account, params.familyId, params.teenAddress, "savings", true);
+  await recordAction(executionAccount, params.familyId, params.teenAddress, "savings", true);
   const passportAfter = await getPassport(params.familyId, params.teenAddress);
   const [balances, walletBalance] = await getHouseholdBalances(
     params.familyId,
     params.teenAddress,
-    account.address,
+    executionAccount.address,
   );
 
   addReceipt(
@@ -201,7 +203,7 @@ export async function executeDirectPaymentFlow(params: {
     throw new Error("DIRECT_FLOW_PAYEE_NOT_WHITELISTED");
   }
 
-  const account = await getFlowAccount(params.session);
+  const account = getServiceAccount();
   const lane = buildLaneMetadata({
     session: params.session,
     executionLane: "direct-flow",
@@ -295,12 +297,15 @@ export async function executeDirectSubscriptionFlow(params: {
   }
 
   const operation = params.operation || "fund";
-  const account = await getFlowAccount(params.session);
+  const serviceAccount = getServiceAccount();
+  const guardianAccount = operation === "cancel" ? await getFlowAccount(params.session) : serviceAccount;
   const lane = buildLaneMetadata({
     session: params.session,
     executionLane: "direct-flow",
     policyMode: "not-applicable",
   });
+  const subscriptionRecipient =
+    params.recipientAddress || (SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}`);
 
   const passportBefore = await getPassport(params.familyId, params.teenAddress);
   let txHash = "";
@@ -311,12 +316,12 @@ export async function executeDirectSubscriptionFlow(params: {
     if (typeof params.scheduleId !== "number") {
       throw new Error("DIRECT_FLOW_SCHEDULE_REQUIRED");
     }
-    txHash = await pauseSchedule(account, params.scheduleId);
+    txHash = await pauseSchedule(guardianAccount, params.scheduleId);
     flowTxUrl = explorerUrl(txHash);
   } else {
     if (!params.amount) throw new Error("DIRECT_FLOW_AMOUNT_REQUIRED");
     const fundTx = await fundSubscription(
-      account,
+      serviceAccount,
       params.familyId,
       params.teenAddress,
       params.serviceName,
@@ -325,16 +330,14 @@ export async function executeDirectSubscriptionFlow(params: {
     txHash = fundTx.txHash;
     flowTxUrl = fundTx.explorerUrl;
     schedule = await createSubscriptionSchedule(
-      account,
+      serviceAccount,
       params.familyId,
       params.teenAddress,
       parseEther(params.amount),
       params.serviceName,
-      params.recipientAddress ||
-        ((process.env.SUBSCRIPTION_RECIPIENT_ADDRESS ||
-          "0x0000000000000000000000000000000000000000") as `0x${string}`),
+      subscriptionRecipient,
     );
-    await recordAction(account, params.familyId, params.teenAddress, "subscription", true);
+    await recordAction(serviceAccount, params.familyId, params.teenAddress, "subscription", true);
   }
 
   const parsed = await parseTransactionEvents(txHash as `0x${string}`);
@@ -342,7 +345,7 @@ export async function executeDirectSubscriptionFlow(params: {
   const [balances, walletBalance] = await getHouseholdBalances(
     params.familyId,
     params.teenAddress,
-    account.address,
+    (operation === "cancel" ? guardianAccount : serviceAccount).address,
   );
 
   addReceipt(
@@ -365,7 +368,7 @@ export async function executeDirectSubscriptionFlow(params: {
       flowBlockNumber: Number(parsed.blockNumber),
       flowMediumBalance: balances.spendable,
       nativeWalletBalance: walletBalance,
-      recipientAddress: params.recipientAddress,
+      recipientAddress: subscriptionRecipient,
       payeeLabel: params.serviceName,
       passportLevel: passportAfter.level,
       passportLeveledUp: passportAfter.level > passportBefore.level,
@@ -408,7 +411,7 @@ export async function executeDirectSubscriptionFlow(params: {
           scheduleId: schedule.scheduleId,
           label: schedule.label,
           interval: schedule.interval,
-          recipientAddress: params.recipientAddress,
+          recipientAddress: subscriptionRecipient,
           backend: schedule.backend,
           executionSource: schedule.executionSource,
           scheduledExecutionId: schedule.scheduledExecutionId,

@@ -19,15 +19,15 @@ export const flowWalletClient = createWalletClient({
 });
 
 export function getServiceAccount() {
-  const envName = process.env.FLOW_TESTNET_PRIVATE_KEY
-    ? "FLOW_TESTNET_PRIVATE_KEY"
-    : process.env.DEPLOYER_PRIVATE_KEY
-      ? "DEPLOYER_PRIVATE_KEY"
+  const envName = process.env.DEPLOYER_PRIVATE_KEY
+    ? "DEPLOYER_PRIVATE_KEY"
+    : process.env.FLOW_TESTNET_PRIVATE_KEY
+      ? "FLOW_TESTNET_PRIVATE_KEY"
       : "";
-  const privateKey = process.env.FLOW_TESTNET_PRIVATE_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+  const privateKey = process.env.DEPLOYER_PRIVATE_KEY || process.env.FLOW_TESTNET_PRIVATE_KEY;
 
   if (!privateKey) {
-    throw new Error("Missing FLOW_TESTNET_PRIVATE_KEY or DEPLOYER_PRIVATE_KEY");
+    throw new Error("Missing DEPLOYER_PRIVATE_KEY or FLOW_TESTNET_PRIVATE_KEY");
   }
 
   return privateKeyToAccount(normalizePrivateKeyEnv(envName, privateKey));

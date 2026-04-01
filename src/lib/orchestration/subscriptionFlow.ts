@@ -1,6 +1,7 @@
 import "server-only";
 
 import { parseTransactionEvents } from "@/lib/flow/events";
+import { getFamilyById } from "@/lib/onboarding/familyService";
 import { getPassport, recordAction } from "@/lib/flow/passport";
 import { createSubscriptionSchedule } from "@/lib/flow/scheduler";
 import { fundSubscription } from "@/lib/flow/vault";
@@ -18,12 +19,32 @@ import {
 } from "@/lib/storacha/receipts";
 import { addReceipt, receiptFromFlowResult } from "@/lib/receipts/receiptStore";
 import { createApprovalRequest } from "@/lib/approvals/durableApprovals";
-import { flowToWei, inrToPaise } from "@/lib/money";
+import { flowToPolicyUnits, flowToWei } from "@/lib/money";
 import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { isDemoStrictMode } from "@/lib/runtime/demoMode";
 import { buildLaneMetadata } from "@/lib/runtime/lanes";
 import type { ApprovalRequest, FlowResult, UserSession } from "@/lib/types";
-import { CONTRACTS, SAFE_EXECUTOR_CID } from "@/lib/constants";
+import { CONTRACTS, SAFE_EXECUTOR_CID, SUBSCRIPTION_RECIPIENT_ADDRESS } from "@/lib/constants";
+
+function resolveTeenAddress(
+  familyId: `0x${string}`,
+  teenAddress: `0x${string}`,
+): `0x${string}` {
+  const family = getFamilyById(familyId);
+  if (!family) {
+    return teenAddress;
+  }
+
+  const normalizedTeenAddress = teenAddress.toLowerCase();
+  const selectedTeen =
+    family.teenAddress.toLowerCase() === normalizedTeenAddress
+      ? null
+      : family.linkedTeens?.find(
+          (teen) => teen.active && teen.teenAddress.toLowerCase() === normalizedTeenAddress,
+        ) || null;
+
+  return (selectedTeen?.teenAddress || family.teenAddress) as `0x${string}`;
+}
 
 export async function requestSubscription(params: {
   session: UserSession;
@@ -34,6 +55,7 @@ export async function requestSubscription(params: {
   serviceName: string;
   monthlyAmount: string;
   clawrencePublicKey: string;
+  recipientAddress?: string;
 }): Promise<FlowResult & { approvalRequest?: ApprovalRequest }> {
   try {
     assertContractConfigForDemo();
@@ -43,14 +65,15 @@ export async function requestSubscription(params: {
       approvalMode: "guardian-approval-required",
       policyMode: "encrypted-live",
     });
-    const passportState = await getPassport(params.familyId, params.teenAddress);
+    const teenAddress = resolveTeenAddress(params.familyId, params.teenAddress);
+    const passportState = await getPassport(params.familyId, teenAddress);
 
     const preExplanation = await preActionExplanation({
       teenName: params.teenName,
       action: "subscribe",
       description: `${params.serviceName} subscription`,
       amount: Number(params.monthlyAmount),
-      currency: "₹",
+      currency: "FLOW",
       isRecurring: true,
       passportLevel: passportState.level,
       passportStreak: passportState.weeklyStreak,
@@ -58,17 +81,19 @@ export async function requestSubscription(params: {
 
     const { account: clawrenceAccount } = await getClawrenceAccount(
       params.familyId,
-      params.teenAddress,
+      teenAddress,
     );
     const executionContext = await getClawrenceExecutionContext(
       params.familyId,
-      params.teenAddress,
+      teenAddress,
     );
+    const subscriptionRecipient =
+      (params.recipientAddress || SUBSCRIPTION_RECIPIENT_ADDRESS) as `0x${string}`;
 
     const policyResult = await evaluateAction({
       familyId: params.familyId,
-      teenAddress: params.teenAddress,
-      amount: inrToPaise(params.monthlyAmount),
+      teenAddress,
+      amount: flowToPolicyUnits(params.monthlyAmount),
       passportLevel: passportState.level,
       isRecurring: true,
       account: clawrenceAccount,
@@ -80,9 +105,9 @@ export async function requestSubscription(params: {
     const postExplanation = await postDecisionExplanation({
       teenName: params.teenName,
       action: "subscription",
-      description: `${params.serviceName} ₹${params.monthlyAmount}/month`,
+      description: `${params.serviceName} ${params.monthlyAmount} FLOW/month`,
       amount: Number(params.monthlyAmount),
-      currency: "₹",
+      currency: "FLOW",
       decision,
       passportLevel: passportState.level,
     });
@@ -91,12 +116,13 @@ export async function requestSubscription(params: {
       return await executeApprovedSubscription({
         session: params.session,
         familyId: params.familyId,
-        teenAddress: params.teenAddress,
+        teenAddress,
         guardianAddress: params.guardianAddress,
         teenName: params.teenName,
         serviceName: params.serviceName,
         monthlyAmount: params.monthlyAmount,
         clawrencePublicKey: params.clawrencePublicKey,
+        recipientAddress: subscriptionRecipient,
         decision,
         passportBefore: passportState,
         preExplanation,
@@ -129,7 +155,7 @@ export async function requestSubscription(params: {
       action: "subscription",
       description: `${params.serviceName} subscription`,
       amount: Number(params.monthlyAmount),
-      currency: "₹",
+      currency: "FLOW",
       isRecurring: true,
       decision,
       passportLevel: passportState.level,
@@ -139,7 +165,7 @@ export async function requestSubscription(params: {
     const pendingReceipt = await uploadJSON({
       type: "pending_approval",
       familyId: params.familyId,
-      teen: params.teenAddress,
+      teen: teenAddress,
       action: "subscription",
       serviceName: params.serviceName,
       amount: params.monthlyAmount,
@@ -149,12 +175,12 @@ export async function requestSubscription(params: {
 
     const approvalRequest: ApprovalRequest = createApprovalRequest({
       familyId: params.familyId,
-      teenAddress: params.teenAddress,
+      teenAddress,
       teenName: params.teenName,
       actionType: "subscription",
-      description: `${params.serviceName} subscription ₹${params.monthlyAmount}/month`,
+      description: `${params.serviceName} subscription ${params.monthlyAmount} FLOW/month`,
       amount: Number(params.monthlyAmount),
-      currency: "₹",
+      currency: "FLOW",
       isRecurring: true,
       policyDecision: decision,
       clawrencePreExplanation: preExplanation,
@@ -204,6 +230,7 @@ export async function executeApprovedSubscription(params: {
   serviceName: string;
   monthlyAmount: string;
   clawrencePublicKey: string;
+  recipientAddress?: string;
   decision: string;
   passportBefore: any;
   preExplanation: string;
@@ -221,16 +248,15 @@ export async function executeApprovedSubscription(params: {
       approvalMode: params.guardianApproved ? "guardian-approved" : "guardian-approval-required",
       policyMode: "encrypted-live",
     });
+    const teenAddress = resolveTeenAddress(params.familyId, params.teenAddress);
     const { session: clawrenceSession, account: clawrenceAccount } =
-      await getClawrenceAccount(params.familyId, params.teenAddress);
+      await getClawrenceAccount(params.familyId, teenAddress);
     const executionContext = await getClawrenceExecutionContext(
       params.familyId,
-      params.teenAddress,
+      teenAddress,
     );
-
     const subscriptionRecipient =
-      (process.env.SUBSCRIPTION_RECIPIENT_ADDRESS as `0x${string}` | undefined) ||
-      ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+      (params.recipientAddress || SUBSCRIPTION_RECIPIENT_ADDRESS) as `0x${string}`;
 
     const guardrails = await evaluateVincentGuardrailsAsync({
       action: "subscription",
@@ -251,7 +277,7 @@ export async function executeApprovedSubscription(params: {
         ...lane,
         guardrail: {
           decision: "BLOCK",
-          reason: guardrails.reasons[0],
+          reason: guardrails.reasons?.[0] || "Guardian review required",
           source: guardrails.provider,
         },
         guardrails,
@@ -265,7 +291,7 @@ export async function executeApprovedSubscription(params: {
       guardianApproved: params.guardianApproved,
       amount: params.monthlyAmount,
       familyId: params.familyId,
-      teenAddress: params.teenAddress,
+      teenAddress,
       txData: new Uint8Array([]),
       session: params.session,
       clawrencePublicKey:
@@ -325,7 +351,7 @@ export async function executeApprovedSubscription(params: {
     const flowTx = await fundSubscription(
       clawrenceAccount,
       params.familyId,
-      params.teenAddress,
+      teenAddress,
       params.serviceName,
       params.monthlyAmount,
     );
@@ -334,7 +360,7 @@ export async function executeApprovedSubscription(params: {
     const scheduleResult = await createSubscriptionSchedule(
       clawrenceAccount,
       params.familyId,
-      params.teenAddress,
+      teenAddress,
       amountWei,
       params.serviceName,
       subscriptionRecipient,
@@ -345,16 +371,16 @@ export async function executeApprovedSubscription(params: {
     await recordAction(
       clawrenceAccount,
       params.familyId,
-      params.teenAddress,
+      teenAddress,
       "subscription",
       true,
     );
-    const passportAfter = await getPassport(params.familyId, params.teenAddress);
+    const passportAfter = await getPassport(params.familyId, teenAddress);
     const leveledUp = passportAfter.level > params.passportBefore.level;
 
     const receipt = buildSubscriptionReceipt({
       familyId: params.familyId,
-      teen: params.teenAddress,
+      teen: teenAddress,
       guardian: params.guardianAddress,
       serviceName: params.serviceName,
       amount: params.monthlyAmount,
@@ -421,7 +447,7 @@ export async function executeApprovedSubscription(params: {
       },
       {
         familyId: params.familyId,
-        teenAddress: params.teenAddress,
+        teenAddress,
         type: "subscription",
         description: `${params.serviceName} subscription`,
         amount: params.monthlyAmount,
@@ -433,7 +459,7 @@ export async function executeApprovedSubscription(params: {
     if (leveledUp) {
       passportCid = await storePassportSnapshot({
         familyId: params.familyId,
-        teen: params.teenAddress,
+        teen: teenAddress,
         oldLevel: params.passportBefore.level,
         newLevel: passportAfter.level,
         triggeringAction: `Subscription: ${params.serviceName}`,
@@ -445,7 +471,7 @@ export async function executeApprovedSubscription(params: {
       teenName: params.teenName,
       action: "subscription",
       amount: Number(params.monthlyAmount),
-      currency: "₹",
+      currency: "FLOW",
       leveledUp,
       oldLevel: params.passportBefore.level,
       newLevel: passportAfter.level,

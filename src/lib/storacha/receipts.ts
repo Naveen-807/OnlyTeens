@@ -5,6 +5,10 @@ import { assertContractConfigForDemo } from "@/lib/runtime/config";
 import { uploadJSON } from "@/lib/storacha/client";
 import { buildDelegationMetadata } from "@/lib/storacha/delegation";
 import type {
+  DeFiActionKind,
+  DeFiPortfolioState,
+  DeFiRiskLevel,
+  DeFiStrategy,
   GuardrailResult,
   PolicyDecision,
   Proof18Receipt,
@@ -28,6 +32,7 @@ export function buildSavingsReceipt(params: {
   guardian: string;
   amount: string;
   decision: PolicyDecision;
+  receiptType?: "savings" | "defi";
   isRecurring: boolean;
   interval?: "weekly" | "monthly";
   flowTxHash: string;
@@ -46,18 +51,36 @@ export function buildSavingsReceipt(params: {
   nextExecutionAt?: string;
   celebration?: string;
   zamaTxHash?: string;
+  defi?: {
+    actionKind: DeFiActionKind;
+    strategy: DeFiStrategy;
+    goalName?: string;
+    protocolLabel?: string;
+    riskLevel: DeFiRiskLevel;
+    estimatedApr?: number;
+    targetAmount?: string;
+    portfolio?: DeFiPortfolioState;
+  };
 }): Proof18Receipt {
+  const receiptType = params.receiptType || (params.defi ? "defi" : "savings");
+  const description = params.defi
+    ? params.defi.goalName
+      ? `${params.defi.actionKind} plan for ${params.defi.goalName}`
+      : `DeFi ${params.defi.actionKind} plan (${params.defi.strategy})`
+    : `Savings deposit of ${params.amount} FLOW${params.isRecurring ? ` (${params.interval || "weekly"})` : ""}`;
+
   return {
     version: "v1",
-    type: "savings",
+    type: receiptType,
     familyId: params.familyId,
     teen: params.teen,
     guardian: params.guardian,
     action: {
-      description: `Savings deposit of ${params.amount} FLOW${params.isRecurring ? ` (${params.interval || "weekly"})` : ""}`,
+      description,
       amount: params.amount,
       currency: "FLOW",
       isRecurring: params.isRecurring,
+      serviceName: params.defi?.goalName,
     },
     policy: {
       decision: params.decision,
@@ -96,6 +119,18 @@ export function buildSavingsReceipt(params: {
       postExplanation: params.postExplanation,
       celebration: params.celebration,
     },
+    defi: params.defi
+      ? {
+          actionKind: params.defi.actionKind,
+          strategy: params.defi.strategy,
+          goalName: params.defi.goalName,
+          protocolLabel: params.defi.protocolLabel,
+          riskLevel: params.defi.riskLevel,
+          estimatedApr: params.defi.estimatedApr,
+          targetAmount: params.defi.targetAmount,
+          portfolio: params.defi.portfolio,
+        }
+      : undefined,
     timestamp: new Date().toISOString(),
     delegation: buildDelegationMetadata({
       familyId: params.familyId,

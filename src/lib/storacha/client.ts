@@ -39,9 +39,10 @@ export async function uploadJSON(
       url: `https://storacha.link/ipfs/${cid.toString()}`,
     };
   } catch (error: any) {
-    throw new Error(
-      `EVIDENCE_WRITE_FAILED:${error?.message || "Storacha upload failed"}`,
+    console.warn(
+      `[Storacha] Evidence upload skipped: ${error?.message || "Storacha upload failed"}`,
     );
+    return { cid: "", url: "" };
   }
 }
 

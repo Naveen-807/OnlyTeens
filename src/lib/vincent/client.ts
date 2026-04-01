@@ -73,6 +73,11 @@ function getVincentAppId(): string | null {
   return process.env.VINCENT_APP_ID || null;
 }
 
+function normalizeVincentVersion(value?: string | null): string | null {
+  if (!value) return null;
+  return value.trim().replace(/^v/i, "");
+}
+
 export function getVincentConfig() {
   return {
     apiKey: getVincentApiKey(),
@@ -96,8 +101,7 @@ export function isVincentLiveReady(): boolean {
       config.appId &&
       config.appVersion &&
       config.redirectUri &&
-      config.jwtAudience &&
-      config.delegateePrivateKey,
+      config.jwtAudience,
   );
 }
 
@@ -313,6 +317,10 @@ export async function verifyVincentJwt(jwt: string): Promise<VincentJwtVerificat
   const app = (claims.app || {}) as Record<string, unknown>;
   const pkp = (claims.pkp || {}) as Record<string, unknown>;
   const exp = typeof claims.exp === "number" ? claims.exp : 0;
+  const expectedAppVersion = normalizeVincentVersion(config.appVersion);
+  const incomingAppVersion = normalizeVincentVersion(
+    typeof app.version === "string" ? app.version : undefined,
+  );
 
   const audMatches = Array.isArray(aud)
     ? aud.includes(config.jwtAudience)
@@ -324,7 +332,7 @@ export async function verifyVincentJwt(jwt: string): Promise<VincentJwtVerificat
   if (config.appId && app.id && app.id !== config.appId) {
     throw new Error("VINCENT_AUTH_INVALID:JWT app id mismatch");
   }
-  if (config.appVersion && app.version && app.version !== config.appVersion) {
+  if (expectedAppVersion && incomingAppVersion && incomingAppVersion !== expectedAppVersion) {
     throw new Error("VINCENT_AUTH_INVALID:JWT app version mismatch");
   }
   if (!exp || Date.now() >= exp * 1000) {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CONTRACTS } from "@/lib/constants";
+import { CONTRACTS, SUBSCRIPTION_RECIPIENT_ADDRESS } from "@/lib/constants";
 import { assertLiveDependency, isLiveMode } from "@/lib/runtime/liveMode";
 import { evaluateWithVincentAPI, isVincentConfigured } from "@/lib/vincent/client";
 import type { ActionType, GuardrailResult } from "@/lib/types";
@@ -30,7 +30,10 @@ function getVincentConfig() {
     process.env.VINCENT_ALLOWED_RECIPIENTS,
     [],
   );
-  const defaultRecipients = [CONTRACTS.vault.toLowerCase()];
+  const defaultRecipients = [
+    CONTRACTS.vault.toLowerCase(),
+    SUBSCRIPTION_RECIPIENT_ADDRESS.toLowerCase(),
+  ];
   const subscriptionRecipient = process.env.SUBSCRIPTION_RECIPIENT_ADDRESS?.toLowerCase();
 
   if (subscriptionRecipient) {

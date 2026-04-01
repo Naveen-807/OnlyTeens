@@ -5,6 +5,10 @@ import * as path from "path";
 
 import type {
   ApprovalMode,
+  DeFiActionKind,
+  DeFiPortfolioState,
+  DeFiRiskLevel,
+  DeFiStrategy,
   ExecutionLane,
   FlowMedium,
   PolicyMode,
@@ -62,6 +66,14 @@ export interface StoredReceipt {
   erc8004IdentityTxHash?: string;
   erc8004ReputationTxHashes?: string[];
   erc8004ValidationTxHashes?: string[];
+  defi?: {
+    actionKind: DeFiActionKind;
+    strategy: DeFiStrategy;
+    goalName?: string;
+    protocolLabel?: string;
+    riskLevel: DeFiRiskLevel;
+    portfolio?: DeFiPortfolioState;
+  };
   timestamp: string;
 }
 
@@ -144,6 +156,7 @@ export function normalizeStoredReceipt(receipt: StoredReceipt): StoredReceipt {
 
 function inferLaneFromLegacyReceipt(receipt: StoredReceipt): ExecutionLane {
   if (receipt.guardianAutopilotEnabled) return "guardian-autopilot-flow";
+  if (receipt.type === "defi") return "agent-assisted-flow";
   if (receipt.zamaTxHash || receipt.litActionCid || receipt.vincentAppId) {
     return "agent-assisted-flow";
   }
@@ -152,12 +165,14 @@ function inferLaneFromLegacyReceipt(receipt: StoredReceipt): ExecutionLane {
 
 function inferActorFromLegacyReceipt(receipt: StoredReceipt): TransactionActor {
   if (receipt.guardianAutopilotEnabled) return "calma";
+  if (receipt.type === "defi") return "calma";
   if (receipt.type === "subscription") return "calma";
   return "teen";
 }
 
 function inferApprovalModeFromLegacyReceipt(receipt: StoredReceipt): ApprovalMode {
   if (receipt.guardianAutopilotEnabled) return "guardian-autopilot";
+  if (receipt.type === "defi") return "none";
   if (receipt.type === "subscription" && receipt.zamaTxHash) return "guardian-approved";
   return "none";
 }
@@ -224,6 +239,16 @@ export function receiptFromFlowResult(
     scheduleId: flowResult.schedule?.scheduleId,
     scheduleTxHash: flowResult.schedule?.txHash,
     zamaTxHash: flowResult.zama?.evaluationTxHash,
+    defi: flowResult.defi
+      ? {
+          actionKind: flowResult.defi.actionKind,
+          strategy: flowResult.defi.strategy,
+          goalName: flowResult.defi.goalName,
+          protocolLabel: flowResult.defi.protocolLabel,
+          riskLevel: flowResult.defi.riskLevel,
+          portfolio: flowResult.defi.portfolio,
+        }
+      : undefined,
     vincentAppId: flowResult.vincent?.appId,
     vincentAppVersion: flowResult.vincent?.appVersion,
     vincentJwtAuthenticated: flowResult.vincent?.jwtAuthenticated,
